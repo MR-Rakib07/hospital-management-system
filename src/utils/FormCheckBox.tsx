@@ -1,28 +1,34 @@
+'use client'
+import React, { ChangeEvent } from 'react'
 
-import Link from 'next/link';
-import React from 'react'
-interface CheckboxType {
-    label: string;
-    name?: string;
-    type?: string;
-    value: string;
-    placeholder?: string;
-    className?: string
-    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+export interface CheckboxProps {
+  label: string
+  name: string
+  checked: boolean
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void
+  className?: string
 }
-function FormCheckBox({label,name,type,value,onChange}:CheckboxType) {
-    return (
-        <div className="flex items-center">
-            <input type={type} name={name} value={value} onChange={onChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-            
-            <label className="ml-2 text-sm flex items-center gap-1 text-gray-700 ">
-                <p>I Accept</p>
-                <Link href='/'>
-                <p className='text-blue-500 font-semibold'>{label}</p>
-                </Link>
-            </label>
-        </div>
-    )
+
+function FormCheckBox({
+  label,
+  name,
+  checked,
+  onChange,
+  className = ''
+}: CheckboxProps) {
+  return (
+    <label htmlFor={name} className="flex items-center gap-2 cursor-pointer select-none">
+      <input
+        type="checkbox"
+        id={name}
+        name={name}
+        checked={checked}
+        onChange={onChange}
+        className={`${className} h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer`}
+      />
+      <span className="text-sm text-gray-600">{label}</span>
+    </label>
+  )
 }
 
 export default FormCheckBox

@@ -5,5 +5,6 @@ export interface FormInputType {
   value?: string;
   placeholder?: string;
   className?: string
+  required?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
