@@ -3,7 +3,7 @@ interface ApiProps {
   option?: RequestInit
 }
 
-interface ApiResponse<T = Record<string, string>> {
+interface ApiResponse {
   message?: string
   result?: {
     accessToken?: string
@@ -80,7 +80,7 @@ export const API = async <T = Record<string, string>>({
               ...config,
               headers: retryHeaders,
             })
-            const retryData = (await retryRes.json()) as ApiResponse<T> & T
+            const retryData = (await retryRes.json()) as ApiResponse & T
             if (!retryRes.ok) {
               throw new Error(retryData?.message || 'Request failed')
             }
@@ -141,7 +141,7 @@ export const API = async <T = Record<string, string>>({
           headers: retryHeaders,
         })
 
-        const retryData = (await retryRes.json()) as ApiResponse<T> & T
+        const retryData = (await retryRes.json()) as ApiResponse & T
 
         if (!retryRes.ok) {
           throw new Error(retryData?.message || 'Request failed after refresh')
@@ -167,7 +167,7 @@ export const API = async <T = Record<string, string>>({
       }
     }
 
-    const data = (await res.json()) as ApiResponse<T> & T
+    const data = (await res.json()) as ApiResponse & T
 
     if (!res.ok) {
       console.log(data?.message)

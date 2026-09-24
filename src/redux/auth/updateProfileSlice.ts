@@ -1,6 +1,6 @@
 import { API } from "@/api/API";
 import { UserProfile } from "@/types/user";
-import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export type UpdateProfilePayload = Partial<Omit<UserProfile, "id" | "createdAt" | "updatedAt">>;
 
@@ -86,15 +86,12 @@ const updateProfileSlice = createSlice({
         state.error = null;
         state.message = null;
       })
-      .addCase(
-        updateProfileThunk.fulfilled,
-        (state, _action: PayloadAction<UserProfile>) => {
-          state.loading = false;
-          state.success = true;
-          state.message = "Profile updated successfully";
-          state.error = null;
-        }
-      )
+      .addCase(updateProfileThunk.fulfilled, (state) => {
+        state.loading = false;
+        state.success = true;
+        state.message = "Profile updated successfully";
+        state.error = null;
+      })
       .addCase(updateProfileThunk.rejected, (state, action) => {
         state.loading = false;
         state.success = false;

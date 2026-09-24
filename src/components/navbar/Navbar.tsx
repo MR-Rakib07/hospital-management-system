@@ -54,7 +54,7 @@ function Navbar() {
         dispatch(clearSigninState())
       }
     }
-  }, [dispatch, pathname])
+  }, [dispatch, pathname, user])
 
   useEffect(() => {
     const handleScroll = () => {

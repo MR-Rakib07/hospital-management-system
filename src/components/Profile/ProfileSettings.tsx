@@ -73,8 +73,7 @@ function ProfileSettings({ user, onUpdate }: ProfileSettingsProps) {
         emergencyPhone: user.emergencyPhone || '',
       })
     }
-  }, [user])
-
+  }, [user?.id, user?.updatedAt])
   useEffect(() => {
     if (profileSuccess) {
       if (onUpdate) onUpdate()
@@ -121,7 +120,7 @@ function ProfileSettings({ user, onUpdate }: ProfileSettingsProps) {
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    const payload: Record<string, any> = {}
+    const payload: Partial<UserProfile> = {}
 
     Object.entries(form).forEach(([key, value]) => {
       if (key === 'email') return
@@ -134,7 +133,8 @@ function ProfileSettings({ user, onUpdate }: ProfileSettingsProps) {
       }
 
       if (typeof value === 'string' && value.trim() !== '') {
-        payload[key] = value.trim()
+        const field = key as keyof UserProfile
+        payload[field] = value.trim() as never
       }
     })
 
