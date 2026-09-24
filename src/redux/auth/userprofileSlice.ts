@@ -2,6 +2,21 @@ import { API } from "@/api/API";
 import { UserProfile } from "@/types/user";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+interface ProfileResponse {
+  message?: string;
+  data?: UserProfile;
+  user?: UserProfile;
+}
+
+interface CustomError {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
 export const fetchProfileThunk = createAsyncThunk<
   UserProfile,
   void,
@@ -10,7 +25,7 @@ export const fetchProfileThunk = createAsyncThunk<
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    const res = await API({
+    const res = await API<ProfileResponse & UserProfile>({
       endpoint: "/auth/me",
       option: {
         method: "GET",
@@ -22,13 +37,15 @@ export const fetchProfileThunk = createAsyncThunk<
       },
     });
 
-    const userData: UserProfile = res?.data || res?.user || res;
+    const userData: UserProfile = res.data || res.user || res;
     return userData;
-  } catch (error: any) {
+  } catch (error) {
+    const customErr = error as CustomError;
     const errorMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Failed to fetch profile information.";
+      customErr?.response?.data?.message ||
+      customErr?.message ||
+      (error instanceof Error ? error.message : "Failed to fetch profile information.");
+
     return rejectWithValue(errorMessage);
   }
 });

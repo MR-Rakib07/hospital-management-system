@@ -1,10 +1,19 @@
 import { API } from "@/api/API";
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import Cookies from "js-cookie";
 
 interface LogoutResponse {
   message?: string;
   success?: boolean;
+}
+
+interface CustomError {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
 }
 
 export const logoutThunk = createAsyncThunk<
@@ -15,7 +24,7 @@ export const logoutThunk = createAsyncThunk<
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    const data = await API({
+    const data = await API<LogoutResponse>({
       endpoint: "/auth/logout",
       option: {
         method: "POST",
@@ -33,16 +42,18 @@ export const logoutThunk = createAsyncThunk<
     Cookies.remove("refreshToken");
 
     return data;
-  } catch (error: any) {
+  } catch (error) {
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
     }
     Cookies.remove("refreshToken");
 
+    const customErr = error as CustomError;
     const errorMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Failed to log out";
+      customErr?.response?.data?.message ||
+      customErr?.message ||
+      (error instanceof Error ? error.message : "Failed to log out");
+
     return rejectWithValue(errorMessage);
   }
 });
@@ -75,11 +86,14 @@ const logoutSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(logoutThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.error = null;
-        state.message = action.payload?.message || "Logged out successfully";
-      })
+      .addCase(
+        logoutThunk.fulfilled,
+        (state, action: PayloadAction<LogoutResponse>) => {
+          state.loading = false;
+          state.error = null;
+          state.message = action.payload?.message || "Logged out successfully";
+        }
+      )
       .addCase(logoutThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Logout failed";

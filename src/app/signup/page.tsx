@@ -2,9 +2,8 @@
 import { clearSignupState, signupThunk } from '@/redux/auth/signupSlice'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import FormButton from '@/utils/FormButton'
-// import FormCheckBox from '@/utils/FormCheckBox'
 import FormInput from '@/utils/FormInput'
-import { X } from 'lucide-react'
+import { Eye, EyeOff, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { ChangeEvent, FormEvent, useEffect, useState } from 'react'
@@ -20,7 +19,7 @@ function SignUp() {
         phone: '',
         password: ''
     })
-    // const [termsAccepted, setTermsAccepted] = useState(false)
+    const [showPassword, setShowPassword] = useState<boolean>(false)
     const [clientError, setClientError] = useState<string | null>(null)
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -31,11 +30,6 @@ function SignUp() {
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-
-        // if (!termsAccepted) {
-        //     setClientError('Please accept the Terms and Conditions')
-        //     return
-        // }
 
         dispatch(signupThunk(form))
     }
@@ -113,28 +107,25 @@ function SignUp() {
                             required
                         />
 
-                        <FormInput
-                            label="Password"
-                            type="password"
-                            placeholder="Enter your password"
-                            name="password"
-                            value={form.password}
-                            onChange={handleChange}
-                            required
-                        />
+                        <div className="relative">
+                            <FormInput
+                                label="Password"
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="Enter your password"
+                                name="password"
+                                value={form.password}
+                                onChange={handleChange}
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(prev => !prev)}
+                                className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 transition-colors focus:outline-none"
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                     </div>
-
-                    {/* <div className="pt-1">
-                        <FormCheckBox
-                            label="Terms And Condition"
-                            name="term"
-                            checked={termsAccepted}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                setTermsAccepted(e.target.checked)
-                                if (clientError) setClientError(null)
-                            }}
-                        />
-                    </div> */}
 
                     {(clientError || error) && (
                         <p className='text-xs sm:text-sm font-medium text-red-500 bg-red-50 p-2.5 rounded-md border border-red-200'>

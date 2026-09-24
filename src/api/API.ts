@@ -1,28 +1,47 @@
-interface apiProps {
+interface ApiProps {
   endpoint: string
   option?: RequestInit
+}
+
+interface ApiResponse<T = Record<string, string>> {
+  message?: string
+  result?: {
+    accessToken?: string
+    token?: string
+  } | string
+  data?: {
+    accessToken?: string
+    token?: string
+  }
+  accessToken?: string
+  token?: string
+}
+
+interface QueueItem {
+  resolve: (value: string) => void
+  reject: (reason: Error) => void
 }
 
 const BASE_URL = 'http://localhost:5000/api'
 
 let isRefreshing = false
-let failedQueue: Array<{
-  resolve: (value?: any) => void
-  reject: (reason?: any) => void
-}> = []
+let failedQueue: QueueItem[] = []
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: Error | null, token: string | null = null): void => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error)
-    } else {
+    } else if (token) {
       prom.resolve(token)
     }
   })
   failedQueue = []
 }
 
-export const API = async ({ endpoint, option = {} }: apiProps) => {
+export const API = async <T = Record<string, string>>({
+  endpoint,
+  option = {},
+}: ApiProps): Promise<T> => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
   const defaultHeaders: HeadersInit = {
@@ -35,18 +54,24 @@ export const API = async ({ endpoint, option = {} }: apiProps) => {
     ...option,
     headers: defaultHeaders,
     credentials: 'include',
-    cache: 'no-store'
+    cache: 'no-store',
   }
 
   try {
     const res = await fetch(`${BASE_URL}${endpoint}`, config)
 
-    if (res.status === 401 && endpoint !== '/auth/refresh-token' && endpoint !== '/auth/signin') {
+    const isAuthRequest =
+      endpoint.includes('signin') ||
+      endpoint.includes('login') ||
+      endpoint.includes('signup') ||
+      endpoint.includes('refresh-token')
+
+    if (res.status === 401 && !isAuthRequest) {
       if (isRefreshing) {
-        return new Promise((resolve, reject) => {
+        return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         })
-          .then(async (newToken) => {
+          .then(async (newToken: string): Promise<T> => {
             const retryHeaders: HeadersInit = {
               ...defaultHeaders,
               Authorization: `Bearer ${newToken}`,
@@ -55,11 +80,13 @@ export const API = async ({ endpoint, option = {} }: apiProps) => {
               ...config,
               headers: retryHeaders,
             })
-            const retryData = await retryRes.json()
-            if (!retryRes.ok) throw new Error(retryData?.message || 'Request failed')
+            const retryData = (await retryRes.json()) as ApiResponse<T> & T
+            if (!retryRes.ok) {
+              throw new Error(retryData?.message || 'Request failed')
+            }
             return retryData
           })
-          .catch((err) => {
+          .catch((err: Error) => {
             throw err
           })
       }
@@ -75,19 +102,23 @@ export const API = async ({ endpoint, option = {} }: apiProps) => {
           },
         })
 
-        const refreshData = await refreshRes.json()
+        const refreshData = (await refreshRes.json()) as ApiResponse
 
         if (!refreshRes.ok) {
           throw new Error(refreshData?.message || 'Session expired')
         }
 
+        const rawResult = refreshData?.result
+        const tokenFromResult =
+          typeof rawResult === 'string'
+            ? rawResult
+            : rawResult?.accessToken || rawResult?.token
+
         const newAccessToken =
-          refreshData?.result?.accessToken ||
-          refreshData?.result?.token ||
-          refreshData?.result ||
+          tokenFromResult ||
           refreshData?.data?.accessToken ||
-          refreshData?.accessToken ||
           refreshData?.data?.token ||
+          refreshData?.accessToken ||
           refreshData?.token
 
         if (!newAccessToken) {
@@ -110,28 +141,33 @@ export const API = async ({ endpoint, option = {} }: apiProps) => {
           headers: retryHeaders,
         })
 
-        const retryData = await retryRes.json()
+        const retryData = (await retryRes.json()) as ApiResponse<T> & T
 
         if (!retryRes.ok) {
           throw new Error(retryData?.message || 'Request failed after refresh')
         }
 
         return retryData
-      } catch (refreshError) {
-        processQueue(refreshError, null)
+      } catch (refreshErr) {
+        const normalizedError =
+          refreshErr instanceof Error ? refreshErr : new Error(String(refreshErr))
+
+        processQueue(normalizedError, null)
 
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token')
-          window.location.href = '/signin'
+          if (!window.location.pathname.includes('/signin')) {
+            window.location.href = '/signin'
+          }
         }
 
-        throw refreshError
+        throw normalizedError
       } finally {
         isRefreshing = false
       }
     }
 
-    const data = await res.json()
+    const data = (await res.json()) as ApiResponse<T> & T
 
     if (!res.ok) {
       console.log(data?.message)
@@ -140,6 +176,9 @@ export const API = async ({ endpoint, option = {} }: apiProps) => {
 
     return data
   } catch (error) {
-    throw error
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error(String(error))
   }
 }

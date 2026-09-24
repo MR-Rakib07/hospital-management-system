@@ -9,7 +9,16 @@ export interface ChangePasswordPayload {
 interface ChangePasswordResponse {
   success?: boolean;
   message?: string;
-  data?: any;
+  data?: Record<string, string | number | boolean | null>;
+}
+
+interface CustomError {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
 }
 
 export const changePasswordThunk = createAsyncThunk<
@@ -20,7 +29,7 @@ export const changePasswordThunk = createAsyncThunk<
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    const data: ChangePasswordResponse = await API({
+    const data = await API<ChangePasswordResponse>({
       endpoint: "/auth/change-password",
       option: {
         method: "POST",
@@ -34,11 +43,13 @@ export const changePasswordThunk = createAsyncThunk<
     });
 
     return data;
-  } catch (error: any) {
+  } catch (error) {
+    const customErr = error as CustomError;
     const errorMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Failed to change password. Please try again.";
+      customErr?.response?.data?.message ||
+      customErr?.message ||
+      (error instanceof Error ? error.message : "Failed to change password. Please try again.");
+
     return rejectWithValue(errorMessage);
   }
 });

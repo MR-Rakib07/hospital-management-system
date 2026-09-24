@@ -2,10 +2,28 @@ import { API } from "@/api/API";
 import { authType } from "@/types/authTypes";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+interface UserProfile {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  [key: string]: string | number | boolean | null | undefined;
+}
+
 interface AuthResponse {
   message: string;
-  user?: Record<string, unknown>;
+  user?: UserProfile;
   token?: string;
+}
+
+interface CustomError {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
 }
 
 export const signupThunk = createAsyncThunk<
@@ -14,7 +32,7 @@ export const signupThunk = createAsyncThunk<
   { rejectValue: string }
 >("auth/register", async (formData: authType, { rejectWithValue }) => {
   try {
-    const data = await API({
+    const data = await API<AuthResponse>({
       endpoint: "/auth/register",
       option: {
         method: "POST",
@@ -26,11 +44,12 @@ export const signupThunk = createAsyncThunk<
     });
 
     return data;
-  } catch (error: any) {
+  } catch (error) {
+    const customErr = error as CustomError;
     const errorMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Failed to complete registration";
+      customErr?.response?.data?.message ||
+      customErr?.message ||
+      (error instanceof Error ? error.message : "Failed to complete registration");
     return rejectWithValue(errorMessage);
   }
 });

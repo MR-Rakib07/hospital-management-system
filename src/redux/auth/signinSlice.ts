@@ -1,17 +1,33 @@
 import { API } from "@/api/API";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import Cookies from "js-cookie";
 
 interface LoginCredentials {
   email: string;
   password: string;
 }
 
+interface UserProfile {
+  id?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  [key: string]: string | number | boolean | null | undefined;
+}
+
 interface SigninResponse {
   message: string;
   accessToken: string;
   refreshToken?: string;
-  user?: Record<string, unknown>;
+  user?: UserProfile;
+}
+
+interface CustomError {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
 }
 
 export const signinThunk = createAsyncThunk<
@@ -20,7 +36,7 @@ export const signinThunk = createAsyncThunk<
   { rejectValue: string }
 >("auth/login", async (formData: LoginCredentials, { rejectWithValue }) => {
   try {
-    const data = await API({
+    const data = await API<SigninResponse>({
       endpoint: "/auth/login",
       option: {
         method: "POST",
@@ -29,23 +45,19 @@ export const signinThunk = createAsyncThunk<
         body: JSON.stringify(formData),
       },
     });
+
     if (data?.accessToken) {
       localStorage.setItem("token", data.accessToken);
     }
-    // if (data?.refreshToken) {
-    //   Cookies.set("refreshToken", data.refreshToken, {
-    //     expires: 30,
-    //     secure: true,
-    //     sameSite: "strict",
-    //   });
-    // }
 
     return data;
-  } catch (error: any) {
+  } catch (error) {
+    const customErr = error as CustomError;
     const errorMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Unable to log in. Please try again.";
+      customErr?.response?.data?.message ||
+      customErr?.message ||
+      (error instanceof Error ? error.message : "Unable to log in. Please try again.");
+
     return rejectWithValue(errorMessage);
   }
 });

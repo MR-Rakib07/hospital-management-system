@@ -10,6 +10,15 @@ interface UpdateProfileResponse {
   user?: UserProfile;
 }
 
+interface CustomError {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
 export const updateProfileThunk = createAsyncThunk<
   UserProfile,
   UpdateProfilePayload,
@@ -18,7 +27,7 @@ export const updateProfileThunk = createAsyncThunk<
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    const res: UpdateProfileResponse = await API({
+    const res = await API<UpdateProfileResponse & UserProfile>({
       endpoint: "/auth/profile",
       option: {
         method: "PATCH",
@@ -31,13 +40,15 @@ export const updateProfileThunk = createAsyncThunk<
       },
     });
 
-    const data = res?.data || res?.user || (res as unknown as UserProfile);
+    const data = res.data || res.user || res;
     return data;
-  } catch (error: any) {
+  } catch (error) {
+    const customErr = error as CustomError;
     const errorMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Failed to update profile. Please try again.";
+      customErr?.response?.data?.message ||
+      customErr?.message ||
+      (error instanceof Error ? error.message : "Failed to update profile. Please try again.");
+
     return rejectWithValue(errorMessage);
   }
 });
@@ -77,7 +88,7 @@ const updateProfileSlice = createSlice({
       })
       .addCase(
         updateProfileThunk.fulfilled,
-        (state, action: PayloadAction<UserProfile>) => {
+        (state, _action: PayloadAction<UserProfile>) => {
           state.loading = false;
           state.success = true;
           state.message = "Profile updated successfully";
