@@ -39,22 +39,22 @@ function Navbar() {
     setToken(storedToken)
 
     if (storedToken) {
-      dispatch(fetchProfileThunk())
-        .unwrap()
-        .catch(() => {
-          localStorage.removeItem('token')
-          setToken(null)
-          dispatch(clearProfile())
-          dispatch(clearSigninState())
-        })
+      if (!user) {
+        dispatch(fetchProfileThunk())
+          .unwrap()
+          .catch(() => {
+            localStorage.removeItem('token')
+            setToken(null)
+            dispatch(clearProfile())
+            dispatch(clearSigninState())
+          })
+      }
     } else {
       setToken(null)
-      if (user) {
-        dispatch(clearProfile())
-        dispatch(clearSigninState())
-      }
+      dispatch(clearProfile())
+      dispatch(clearSigninState())
     }
-  }, [dispatch, pathname, user])
+  }, [dispatch, pathname])
 
   useEffect(() => {
     const handleScroll = () => {
