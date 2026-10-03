@@ -22,7 +22,7 @@ interface QueueItem {
   reject: (reason: Error) => void
 }
 
-const BASE_URL = 'http://localhost:5000/api'
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
 let isRefreshing = false
 let failedQueue: QueueItem[] = []
