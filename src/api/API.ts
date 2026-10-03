@@ -1,7 +1,6 @@
 interface ApiProps {
   endpoint: string
   option?: RequestInit
-  _isRetry?: boolean
 }
 
 interface ApiResponse {
@@ -39,14 +38,13 @@ const processQueue = (error: Error | null, token: string | null = null): void =>
   failedQueue = []
 }
 
-export const API = async <T = Record<string, any>>({
+export const API = async <T = Record<string, string>>({
   endpoint,
   option = {},
-  _isRetry = false,
 }: ApiProps): Promise<T> => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
-  const headers: HeadersInit = {
+  const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(option.headers || {}),
@@ -54,7 +52,7 @@ export const API = async <T = Record<string, any>>({
 
   const config: RequestInit = {
     ...option,
-    headers,
+    headers: defaultHeaders,
     credentials: 'include',
     cache: 'no-store',
   }
@@ -68,23 +66,29 @@ export const API = async <T = Record<string, any>>({
       endpoint.includes('signup') ||
       endpoint.includes('refresh-token')
 
-    if (res.status === 401 && !isAuthRequest && !_isRetry) {
+    if (res.status === 401 && !isAuthRequest) {
       if (isRefreshing) {
         return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject })
-        }).then((newToken: string) => {
-          return API<T>({
-            endpoint,
-            option: {
-              ...option,
-              headers: {
-                ...option.headers,
-                Authorization: `Bearer ${newToken}`,
-              },
-            },
-            _isRetry: true,
-          })
         })
+          .then(async (newToken: string): Promise<T> => {
+            const retryHeaders: HeadersInit = {
+              ...defaultHeaders,
+              Authorization: `Bearer ${newToken}`,
+            }
+            const retryRes = await fetch(`${BASE_URL}${endpoint}`, {
+              ...config,
+              headers: retryHeaders,
+            })
+            const retryData = (await retryRes.json()) as ApiResponse & T
+            if (!retryRes.ok) {
+              throw new Error(retryData?.message || 'Request failed')
+            }
+            return retryData
+          })
+          .catch((err: Error) => {
+            throw err
+          })
       }
 
       isRefreshing = true
@@ -127,17 +131,23 @@ export const API = async <T = Record<string, any>>({
 
         processQueue(null, newAccessToken)
 
-        return API<T>({
-          endpoint,
-          option: {
-            ...option,
-            headers: {
-              ...option.headers,
-              Authorization: `Bearer ${newAccessToken}`,
-            },
-          },
-          _isRetry: true,
+        const retryHeaders: HeadersInit = {
+          ...defaultHeaders,
+          Authorization: `Bearer ${newAccessToken}`,
+        }
+
+        const retryRes = await fetch(`${BASE_URL}${endpoint}`, {
+          ...config,
+          headers: retryHeaders,
         })
+
+        const retryData = (await retryRes.json()) as ApiResponse & T
+
+        if (!retryRes.ok) {
+          throw new Error(retryData?.message || 'Request failed after refresh')
+        }
+
+        return retryData
       } catch (refreshErr) {
         const normalizedError =
           refreshErr instanceof Error ? refreshErr : new Error(String(refreshErr))
@@ -160,6 +170,7 @@ export const API = async <T = Record<string, any>>({
     const data = (await res.json()) as ApiResponse & T
 
     if (!res.ok) {
+      console.log(data?.message)
       throw new Error(data?.message || 'Something went wrong')
     }
 
