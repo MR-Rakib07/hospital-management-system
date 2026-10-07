@@ -58,8 +58,12 @@ function ProfileSettings({ user, onUpdate }: ProfileSettingsProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false)
   const [passwordClientError, setPasswordClientError] = useState<string | null>(null)
 
+  // ইউজার ফর্মে টাইপ করা শুরু করেছে কিনা তা ট্র্যাক করার জন্য
+  const [isFormDirty, setIsFormDirty] = useState<boolean>(false)
+
+  // user ডাটা লোড বা আপডেট হওয়ার পর ফর্ম ইনিশিয়ালাইজ করা
   useEffect(() => {
-    if (user) {
+    if (user && !isFormDirty) {
       setForm({
         fullname: user.fullname || '',
         email: user.email || '',
@@ -75,10 +79,11 @@ function ProfileSettings({ user, onUpdate }: ProfileSettingsProps) {
         emergencyPhone: user.emergencyPhone || '',
       })
     }
-  }, [user])
+  }, [user, isFormDirty])
 
   useEffect(() => {
     if (profileSuccess) {
+      setIsFormDirty(false)
       if (onUpdate) onUpdate()
       const timer = setTimeout(() => {
         dispatch(clearUpdateProfileState())
@@ -103,13 +108,22 @@ function ProfileSettings({ user, onUpdate }: ProfileSettingsProps) {
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
+    setIsFormDirty(true)
     setForm((prev) => ({ ...prev, [name]: value }))
+
+    if (profileSuccess || profileError) {
+      dispatch(clearUpdateProfileState())
+    }
   }
 
   const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setPasswordForm((prev) => ({ ...prev, [name]: value }))
+
     if (passwordClientError) setPasswordClientError(null)
+    if (passwordSuccess || passwordError) {
+      dispatch(clearChangePasswordState())
+    }
   }
 
   const isLengthValid = passwordForm.newPassword.length >= 6
