@@ -3,7 +3,7 @@
 import { changePasswordThunk, clearChangePasswordState } from '@/redux/auth/changePassSlice'
 import { clearUpdateProfileState, updateProfileThunk } from '@/redux/auth/updateProfileSlice'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
-import { UserProfile } from '@/types/user'
+import { BloodGroup, Gender, MaritalStatus, UserProfile } from '@/types/authTypes'
 import { Check, Eye, EyeOff, X } from 'lucide-react'
 import Image from 'next/image'
 import React, { ChangeEvent, FormEvent, useEffect, useState } from 'react'
@@ -12,6 +12,8 @@ interface ProfileSettingsProps {
   user?: UserProfile | null
   onUpdate?: () => void
 }
+
+type UpdateProfilePayload = Partial<Omit<UserProfile, 'role' | 'id' | 'createdAt' | 'updatedAt'>>
 
 function ProfileSettings({ user, onUpdate }: ProfileSettingsProps) {
   const dispatch = useAppDispatch()
@@ -73,7 +75,8 @@ function ProfileSettings({ user, onUpdate }: ProfileSettingsProps) {
         emergencyPhone: user.emergencyPhone || '',
       })
     }
-  }, [user?.id, user?.updatedAt])
+  }, [user])
+
   useEffect(() => {
     if (profileSuccess) {
       if (onUpdate) onUpdate()
@@ -120,23 +123,31 @@ function ProfileSettings({ user, onUpdate }: ProfileSettingsProps) {
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    const payload: Partial<UserProfile> = {}
+    const payload: UpdateProfilePayload = {}
 
-    Object.entries(form).forEach(([key, value]) => {
-      if (key === 'email') return
+    if (form.fullname.trim()) payload.fullname = form.fullname.trim()
+    if (form.phone.trim()) payload.phone = form.phone.trim()
+    if (form.presentAddress.trim()) payload.presentAddress = form.presentAddress.trim()
+    if (form.permanentAddress.trim()) payload.permanentAddress = form.permanentAddress.trim()
+    if (form.emergencyContactName.trim()) payload.emergencyContactName = form.emergencyContactName.trim()
+    if (form.emergencyRelation.trim()) payload.emergencyRelation = form.emergencyRelation.trim()
+    if (form.emergencyPhone.trim()) payload.emergencyPhone = form.emergencyPhone.trim()
 
-      if (key === 'dateOfBirth') {
-        if (value) {
-          payload.dateOfBirth = new Date(value).toISOString()
-        }
-        return
-      }
+    if (form.dateOfBirth) {
+      payload.dateOfBirth = new Date(form.dateOfBirth).toISOString()
+    }
 
-      if (typeof value === 'string' && value.trim() !== '') {
-        const field = key as keyof UserProfile
-        payload[field] = value.trim() as never
-      }
-    })
+    if (form.gender) {
+      payload.gender = form.gender as Gender
+    }
+
+    if (form.bloodGroup) {
+      payload.bloodGroup = form.bloodGroup as BloodGroup
+    }
+
+    if (form.maritalStatus) {
+      payload.maritalStatus = form.maritalStatus as MaritalStatus
+    }
 
     dispatch(updateProfileThunk(payload))
   }
