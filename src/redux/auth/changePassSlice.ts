@@ -7,9 +7,9 @@ export interface ChangePasswordPayload {
 }
 
 interface ChangePasswordResponse {
-  success?: boolean;
-  message?: string;
-  data?: Record<string, string | number | boolean | null>;
+  success: boolean;
+  message: string;
+  data?: Record<string, unknown>;
 }
 
 interface CustomError {
@@ -29,6 +29,10 @@ export const changePasswordThunk = createAsyncThunk<
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
+    if (!token) {
+      return rejectWithValue("Authentication token not found");
+    }
+
     const data = await API<ChangePasswordResponse>({
       endpoint: "/auth/change-password",
       option: {
@@ -36,7 +40,7 @@ export const changePasswordThunk = createAsyncThunk<
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       },
@@ -93,7 +97,7 @@ const changePasswordSlice = createSlice({
           state.loading = false;
           state.success = true;
           state.error = null;
-          state.message = action.payload?.message || "Password changed successfully!";
+          state.message = action.payload.message || "Password changed successfully!";
         }
       )
       .addCase(changePasswordThunk.rejected, (state, action) => {

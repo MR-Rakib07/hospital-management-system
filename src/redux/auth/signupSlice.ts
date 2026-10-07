@@ -1,23 +1,13 @@
 import { API } from "@/api/API";
-import { authType } from "@/types/authTypes";
+import {
+  ApiResponse,
+  AuthSuccessData,
+  RegisterFormInput,
+  UserProfile,
+} from "@/types/authTypes";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-interface UserProfile {
-  id?: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  role?: string;
-  [key: string]: string | number | boolean | null | undefined;
-}
-
-interface AuthResponse {
-  message: string;
-  user?: UserProfile;
-  token?: string;
-}
-
-interface CustomError {
+interface CustomApiError {
   message?: string;
   response?: {
     data?: {
@@ -27,12 +17,12 @@ interface CustomError {
 }
 
 export const signupThunk = createAsyncThunk<
-  AuthResponse,
-  authType,
+  ApiResponse<AuthSuccessData>,
+  RegisterFormInput,
   { rejectValue: string }
->("auth/register", async (formData: authType, { rejectWithValue }) => {
+>("auth/signup", async (formData: RegisterFormInput, { rejectWithValue }) => {
   try {
-    const data = await API<AuthResponse>({
+    const data = await API<ApiResponse<AuthSuccessData>>({
       endpoint: "/auth/register",
       option: {
         method: "POST",
@@ -45,22 +35,24 @@ export const signupThunk = createAsyncThunk<
 
     return data;
   } catch (error) {
-    const customErr = error as CustomError;
+    const customErr = error as CustomApiError;
     const errorMessage =
       customErr?.response?.data?.message ||
       customErr?.message ||
-      (error instanceof Error ? error.message : "Failed to complete registration");
+      (error instanceof Error ? error.message : "Registration failed");
     return rejectWithValue(errorMessage);
   }
 });
 
-interface InitialStateTypes {
+interface SignupState {
+  user: UserProfile | null;
   message: string | null;
   loading: boolean;
   error: string | null;
 }
 
-const initialState: InitialStateTypes = {
+const initialState: SignupState = {
+  user: null,
   message: null,
   loading: false,
   error: null,
@@ -71,8 +63,10 @@ const signupSlice = createSlice({
   initialState,
   reducers: {
     clearSignupState: (state) => {
+      state.user = null;
       state.message = null;
       state.error = null;
+      state.loading = false;
     },
   },
   extraReducers: (builder) => {
@@ -83,10 +77,11 @@ const signupSlice = createSlice({
       })
       .addCase(
         signupThunk.fulfilled,
-        (state, action: PayloadAction<AuthResponse>) => {
+        (state, action: PayloadAction<ApiResponse<AuthSuccessData>>) => {
           state.loading = false;
           state.error = null;
-          state.message = action.payload?.message || "Registration successful";
+          state.message = action.payload.message;
+          state.user = action.payload.data?.user || null;
         }
       )
       .addCase(signupThunk.rejected, (state, action) => {

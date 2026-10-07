@@ -1,13 +1,15 @@
 import { API } from "@/api/API";
-import { UserProfile } from "@/types/user";
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { UserProfile } from "@/types/authTypes";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export type UpdateProfilePayload = Partial<Omit<UserProfile, "id" | "createdAt" | "updatedAt">>;
+export type UpdateProfilePayload = Partial<
+  Omit<UserProfile, "id" | "role" | "createdAt" | "updatedAt">
+>;
 
 interface UpdateProfileResponse {
-  message?: string;
-  data?: UserProfile;
-  user?: UserProfile;
+  success: boolean;
+  message: string;
+  data: UserProfile;
 }
 
 interface CustomError {
@@ -27,21 +29,28 @@ export const updateProfileThunk = createAsyncThunk<
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    const res = await API<UpdateProfileResponse & UserProfile>({
+    if (!token) {
+      return rejectWithValue("Authentication token not found");
+    }
+
+    const res = await API<UpdateProfileResponse>({
       endpoint: "/auth/profile",
       option: {
         method: "PATCH",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(updatedData),
       },
     });
 
-    const data = res.data || res.user || res;
-    return data;
+    if (!res?.data) {
+      return rejectWithValue("Failed to update profile data");
+    }
+
+    return res.data;
   } catch (error) {
     const customErr = error as CustomError;
     const errorMessage =
@@ -54,6 +63,7 @@ export const updateProfileThunk = createAsyncThunk<
 });
 
 interface UpdateProfileState {
+  updatedUser: UserProfile | null;
   loading: boolean;
   success: boolean;
   message: string | null;
@@ -61,6 +71,7 @@ interface UpdateProfileState {
 }
 
 const initialState: UpdateProfileState = {
+  updatedUser: null,
   loading: false,
   success: false,
   message: null,
@@ -76,6 +87,7 @@ const updateProfileSlice = createSlice({
       state.success = false;
       state.message = null;
       state.error = null;
+      state.updatedUser = null;
     },
   },
   extraReducers: (builder) => {
@@ -86,12 +98,16 @@ const updateProfileSlice = createSlice({
         state.error = null;
         state.message = null;
       })
-      .addCase(updateProfileThunk.fulfilled, (state) => {
-        state.loading = false;
-        state.success = true;
-        state.message = "Profile updated successfully";
-        state.error = null;
-      })
+      .addCase(
+        updateProfileThunk.fulfilled,
+        (state, action: PayloadAction<UserProfile>) => {
+          state.loading = false;
+          state.success = true;
+          state.updatedUser = action.payload;
+          state.message = "Profile updated successfully";
+          state.error = null;
+        }
+      )
       .addCase(updateProfileThunk.rejected, (state, action) => {
         state.loading = false;
         state.success = false;

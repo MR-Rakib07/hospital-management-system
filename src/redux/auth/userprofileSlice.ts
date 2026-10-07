@@ -1,11 +1,11 @@
 import { API } from "@/api/API";
-import { UserProfile } from "@/types/user";
+import { UserProfile } from "@/types/authTypes";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-interface ProfileResponse {
-  message?: string;
-  data?: UserProfile;
-  user?: UserProfile;
+interface ProfileApiResponse {
+  success: boolean;
+  message: string;
+  data: UserProfile;
 }
 
 interface CustomError {
@@ -25,20 +25,31 @@ export const fetchProfileThunk = createAsyncThunk<
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    const res = await API<ProfileResponse & UserProfile>({
+    if (!token) {
+      return rejectWithValue("Authentication token not found");
+    }
+
+    const res = await API<ProfileApiResponse>({
       endpoint: "/auth/me",
       option: {
         method: "GET",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
       },
     });
 
-    const userData: UserProfile = res.data || res.user || res;
-    return userData;
+    if (!res?.data) {
+      return rejectWithValue("Failed to retrieve user data");
+    }
+
+    if (typeof window !== "undefined" && res.data.role) {
+      localStorage.setItem("role", res.data.role);
+    }
+
+    return res.data;
   } catch (error) {
     const customErr = error as CustomError;
     const errorMessage =
@@ -71,6 +82,11 @@ const profileSlice = createSlice({
       state.error = null;
       state.loading = false;
     },
+    updateLocalProfile: (state, action: PayloadAction<Partial<UserProfile>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -93,6 +109,6 @@ const profileSlice = createSlice({
   },
 });
 
-export const { clearProfile } = profileSlice.actions;
+export const { clearProfile, updateLocalProfile } = profileSlice.actions;
 
 export default profileSlice.reducer;

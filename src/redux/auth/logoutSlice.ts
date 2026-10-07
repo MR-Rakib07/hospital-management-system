@@ -3,8 +3,8 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import Cookies from "js-cookie";
 
 interface LogoutResponse {
-  message?: string;
   success?: boolean;
+  message?: string;
 }
 
 interface CustomError {
@@ -15,6 +15,14 @@ interface CustomError {
     };
   };
 }
+
+const clearLocalAuthData = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+  }
+  Cookies.remove("refreshToken");
+};
 
 export const logoutThunk = createAsyncThunk<
   LogoutResponse,
@@ -36,17 +44,10 @@ export const logoutThunk = createAsyncThunk<
       },
     });
 
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-    }
-    Cookies.remove("refreshToken");
-
+    clearLocalAuthData();
     return data;
   } catch (error) {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-    }
-    Cookies.remove("refreshToken");
+    clearLocalAuthData();
 
     const customErr = error as CustomError;
     const errorMessage =

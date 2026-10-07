@@ -4,7 +4,7 @@ import { logoutThunk } from '@/redux/auth/logoutSlice'
 import { clearProfile } from '@/redux/auth/userprofileSlice'
 import { clearSigninState } from '@/redux/auth/signinSlice'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
-import { LogOut, Settings } from 'lucide-react'
+import { LayoutDashboard, LogOut, Settings } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -26,6 +26,9 @@ function ProfileNav({ className = '' }: ProfileProps) {
     dispatch(clearSigninState())
     router.push('/')
   }
+
+  const isStaffOrAdminOrDoctor = user?.role === 'ADMIN' || user?.role === 'DOCTOR'
+  const dashboardLink = user?.role === 'ADMIN' ? '/admin/dashboard' : '/doctor/dashboard'
 
   return (
     <div
@@ -52,6 +55,18 @@ function ProfileNav({ className = '' }: ProfileProps) {
       </div>
 
       <ul className="p-2 space-y-1">
+        {isStaffOrAdminOrDoctor && (
+          <li>
+            <Link
+              href={dashboardLink}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm text-gray-700 font-medium"
+            >
+              <LayoutDashboard size={16} />
+              <span>Dashboard</span>
+            </Link>
+          </li>
+        )}
+
         <li>
           <Link
             href="/profile"

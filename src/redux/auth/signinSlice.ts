@@ -1,4 +1,5 @@
 import { API } from "@/api/API";
+import { Role, UserProfile } from "@/types/authTypes";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface LoginCredentials {
@@ -6,18 +7,16 @@ interface LoginCredentials {
   password: string;
 }
 
-interface UserProfile {
-  id?: string;
-  name?: string;
-  email?: string;
-  role?: string;
-  [key: string]: string | number | boolean | null | undefined;
+interface SigninSuccessData {
+  user: UserProfile;
+  accessToken: string;
 }
 
 interface SigninResponse {
-  message: string;
-  accessToken: string;
-  refreshToken?: string;
+  success?: boolean;
+  message?: string;
+  data?: SigninSuccessData;
+  accessToken?: string;
   user?: UserProfile;
 }
 
@@ -36,7 +35,7 @@ export const signinThunk = createAsyncThunk<
   { rejectValue: string }
 >("auth/login", async (formData: LoginCredentials, { rejectWithValue }) => {
   try {
-    const data = await API<SigninResponse>({
+    const res = await API<SigninResponse>({
       endpoint: "/auth/login",
       option: {
         method: "POST",
@@ -46,11 +45,17 @@ export const signinThunk = createAsyncThunk<
       },
     });
 
-    if (data?.accessToken) {
-      localStorage.setItem("token", data.accessToken);
+    const token = res?.data?.accessToken || res?.accessToken;
+    const userRole = res?.data?.user?.role || res?.user?.role;
+
+    if (token) {
+      localStorage.setItem("token", token);
+    }
+    if (userRole) {
+      localStorage.setItem("role", userRole);
     }
 
-    return data;
+    return res;
   } catch (error) {
     const customErr = error as CustomError;
     const errorMessage =
@@ -62,13 +67,19 @@ export const signinThunk = createAsyncThunk<
   }
 });
 
-interface InitialStateTypes {
+interface SigninState {
+  user: UserProfile | null;
+  role: Role | null;
+  token: string | null;
   message: string | null;
   loading: boolean;
   error: string | null;
 }
 
-const initialState: InitialStateTypes = {
+const initialState: SigninState = {
+  user: null,
+  role: typeof window !== "undefined" ? (localStorage.getItem("role") as Role) : null,
+  token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
   message: null,
   loading: false,
   error: null,
@@ -81,6 +92,17 @@ const signinSlice = createSlice({
     clearSigninState: (state) => {
       state.message = null;
       state.error = null;
+      state.loading = false;
+    },
+    logout: (state) => {
+      state.user = null;
+      state.role = null;
+      state.token = null;
+      state.message = null;
+      state.error = null;
+      state.loading = false;
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
     },
   },
   extraReducers: (builder) => {
@@ -95,6 +117,13 @@ const signinSlice = createSlice({
           state.loading = false;
           state.error = null;
           state.message = action.payload?.message || "Login successful";
+
+          const resolvedUser = action.payload?.data?.user || action.payload?.user || null;
+          const resolvedToken = action.payload?.data?.accessToken || action.payload?.accessToken || null;
+
+          state.user = resolvedUser;
+          state.role = resolvedUser?.role || null;
+          state.token = resolvedToken;
         }
       )
       .addCase(signinThunk.rejected, (state, action) => {
@@ -105,6 +134,6 @@ const signinSlice = createSlice({
   },
 });
 
-export const { clearSigninState } = signinSlice.actions;
+export const { clearSigninState, logout } = signinSlice.actions;
 
 export default signinSlice.reducer;
