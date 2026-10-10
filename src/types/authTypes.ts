@@ -71,3 +71,9 @@ export interface AppointmentWithRelations {
   createdAt: string
   updatedAt: string
 }
+
+export interface ApiResponse<T = unknown> {
+  success: boolean
+  message: string
+  data?: T
+}
