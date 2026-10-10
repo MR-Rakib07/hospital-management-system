@@ -1,5 +1,4 @@
 'use client'
-import DoctorsSection from '@/components/doctors/DoctorsSection'
 import DoctorAboutSection from '@/components/home/DoctorAboutsection'
 import MedicalServicesSection from '@/components/home/MedicalServicesSection'
 import PageHeading from '@/utils/PageHeading'
@@ -18,7 +17,6 @@ function About() {
          <div className='mt-15'>
             <DoctorAboutSection/>
             <MedicalServicesSection/>
-            <DoctorsSection/>
          </div>
     </div>
   )
