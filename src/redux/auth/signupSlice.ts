@@ -1,5 +1,5 @@
 import { API } from "@/api/API";
-import {
+import type{
   ApiResponse,
   AuthSuccessData,
   RegisterFormInput,

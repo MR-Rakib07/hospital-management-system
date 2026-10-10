@@ -77,3 +77,16 @@ export interface ApiResponse<T = unknown> {
   message: string
   data?: T
 }
+
+export interface AuthSuccessData {
+  token?: string
+  user: UserProfile
+}
+
+export interface RegisterFormInput {
+  fullname: string
+  email: string
+  password?: string
+  phone: string
+  role?: Role
+}
