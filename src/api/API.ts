@@ -156,8 +156,8 @@ export const API = async <T = Record<string, string>>({
 
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token')
-          if (!window.location.pathname.includes('/signin')) {
-            window.location.href = '/signin'
+          if (!window.location.pathname.includes('/')) {
+            window.location.href = '/'
           }
         }
 

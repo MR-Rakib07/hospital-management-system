@@ -15,7 +15,6 @@ import ProfileNav from '../Profile/ProfileNav'
 const navLinks = [
   { name: 'Home', href: '/' },
   { name: 'Doctors', href: '/doctors' },
-  { name: 'Shop', href: '/shop' },
   { name: 'Appointment', href: '/appointment' },
   { name: 'About us', href: '/about' },
 ]
@@ -54,7 +53,7 @@ function Navbar() {
       dispatch(clearProfile())
       dispatch(clearSigninState())
     }
-  }, [dispatch, pathname])
+  }, [dispatch, pathname, user])
 
   useEffect(() => {
     const handleScroll = () => {

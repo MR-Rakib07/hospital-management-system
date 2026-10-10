@@ -1,4 +1,3 @@
-import DoctorsSection from "@/components/doctors/DoctorsSection";
 import About from "@/components/home/About";
 import DoctorAboutSection from "@/components/home/DoctorAboutsection";
 import Hero from "@/components/home/Hero";
@@ -12,7 +11,6 @@ export default function Home() {
          <About/>
          <DoctorAboutSection/>
          <MedicalServicesSection/>
-         <DoctorsSection/>
          <FAQ/>
     </div>
   );

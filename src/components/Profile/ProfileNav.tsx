@@ -28,7 +28,7 @@ function ProfileNav({ className = '' }: ProfileProps) {
   }
 
   const isStaffOrAdminOrDoctor = user?.role === 'ADMIN' || user?.role === 'DOCTOR'
-  const dashboardLink = user?.role === 'ADMIN' ? '/admin/dashboard' : '/doctor/dashboard'
+  const dashboardLink = user?.role === 'ADMIN' ? '/dashboard' : '/dashboard'
 
   return (
     <div
