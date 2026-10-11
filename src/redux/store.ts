@@ -7,6 +7,7 @@ import logoutReducer from '@/redux/auth/logoutSlice'
 import changePassReducer from '@/redux/auth/changePassSlice'
 import doctorsFetchReducer from '@/redux/doctor/doctorFetchSlice'
 import appointmentReducer from '@/redux/appointment/appointmentSlice'
+import deparmentReducer from '@/redux/department/departmentSlice'
 
 export const store = configureStore({
     reducer:{
@@ -18,6 +19,7 @@ export const store = configureStore({
       changePass:changePassReducer,
       doctors:doctorsFetchReducer,
       appointment: appointmentReducer,
+      department:deparmentReducer
     }
 })
 

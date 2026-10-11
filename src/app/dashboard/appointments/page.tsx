@@ -16,8 +16,11 @@ import {
   Loader2,
   Search,
   UserCheck,
+  Video,
+  Building,
   XCircle,
 } from 'lucide-react'
+import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 
 export default function AppointmentsPage() {
@@ -80,8 +83,8 @@ export default function AppointmentsPage() {
   }
 
   const displayedAppointments = (appointments || []).filter((apt) => {
-    const patientName = apt.patient?.fullname || ''
-    const patientPhone = apt.patient?.phone || ''
+    const patientName = apt.patientName || apt.patient?.fullname || ''
+    const patientPhone = apt.patientPhone || apt.patient?.phone || ''
     const doctorName = apt.doctor?.user?.fullname || ''
 
     const matchesSearch =
@@ -110,8 +113,8 @@ export default function AppointmentsPage() {
           <h2 className="text-xl font-bold text-gray-800">Advance Appointments</h2>
           <p className="text-xs sm:text-sm text-gray-500">
             {user?.role === 'ADMIN'
-              ? 'Complete hospital appointment register (Offline Payment at Arrival)'
-              : 'Patients booked under your chamber slot'}
+              ? 'Complete hospital appointment register (Online & In-Person)'
+              : 'Patients booked under your consultation slot'}
           </p>
         </div>
       </div>
@@ -152,6 +155,7 @@ export default function AppointmentsPage() {
             <option value="ALL">All Status</option>
             <option value="PENDING">PENDING</option>
             <option value="CONFIRMED">CONFIRMED</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
             <option value="COMPLETED">COMPLETED</option>
             <option value="CANCELLED">CANCELLED</option>
           </select>
@@ -165,9 +169,10 @@ export default function AppointmentsPage() {
               <tr>
                 <th className="px-5 py-3.5">Serial</th>
                 <th className="px-5 py-3.5">Patient Details</th>
+                <th className="px-5 py-3.5">Type & Channel</th>
                 {user?.role === 'ADMIN' && <th className="px-5 py-3.5">Doctor & Dept</th>}
                 <th className="px-5 py-3.5">Date & Problem</th>
-                <th className="px-5 py-3.5">Offline Fee</th>
+                <th className="px-5 py-3.5">Fee & Payment</th>
                 <th className="px-5 py-3.5">Status</th>
                 <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
@@ -176,7 +181,7 @@ export default function AppointmentsPage() {
               {loading ? (
                 <tr>
                   <td
-                    colSpan={user?.role === 'ADMIN' ? 7 : 6}
+                    colSpan={user?.role === 'ADMIN' ? 8 : 7}
                     className="py-12 text-center text-sm text-gray-500"
                   >
                     <div className="flex items-center justify-center gap-2">
@@ -188,7 +193,7 @@ export default function AppointmentsPage() {
               ) : displayedAppointments.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={user?.role === 'ADMIN' ? 7 : 6}
+                    colSpan={user?.role === 'ADMIN' ? 8 : 7}
                     className="py-10 text-center text-sm text-gray-400"
                   >
                     No appointments found matching current criteria.
@@ -205,6 +210,11 @@ export default function AppointmentsPage() {
                       })
                     : 'N/A'
 
+                  const fee =
+                    item.type === 'ONLINE'
+                      ? item.doctor?.teleconsultationFee ?? item.doctor?.fee ?? 0
+                      : item.doctor?.fee ?? 0
+
                   return (
                     <tr
                       key={item.id}
@@ -213,24 +223,67 @@ export default function AppointmentsPage() {
                       <td className="px-5 py-4 font-bold text-blue-600">
                         #{item.serialNumber ? item.serialNumber.toString().padStart(2, '0') : '00'}
                       </td>
+
                       <td className="px-5 py-4">
                         <p className="font-semibold text-gray-900">
-                          {item.patient?.fullname || 'Patient'}
+                          {item.patientName || item.patient?.fullname || 'Patient'}
                         </p>
-                        <p className="text-xs text-gray-400">
-                          {item.patient?.phone || 'No phone'}
+                        <p className="text-xs text-gray-500">
+                          {item.patientPhone || item.patient?.phone || 'No phone'}
                         </p>
+                        <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
+                          {item.patientAge && <span>Age: {item.patientAge}</span>}
+                          {item.patientGender && <span>• {item.patientGender}</span>}
+                        </div>
                       </td>
+
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${
+                            item.type === 'ONLINE'
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-emerald-100 text-emerald-700'
+                          }`}
+                        >
+                          {item.type === 'ONLINE' ? (
+                            <>
+                              <Video className="h-3 w-3" /> Online
+                            </>
+                          ) : (
+                            <>
+                              <Building className="h-3 w-3" /> Offline
+                            </>
+                          )}
+                        </span>
+                        {item.type === 'ONLINE' && item.meetingLink && (
+                          <div className="mt-1">
+                            <Link
+                              href={item.meetingLink}
+                              target="_blank"
+                              className="text-[11px] text-blue-600 hover:underline font-medium"
+                            >
+                              Join Call
+                            </Link>
+                          </div>
+                        )}
+                        {item.type === 'OFFLINE' && item.doctor?.roomNumber && (
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            Room: {item.doctor.roomNumber}
+                          </p>
+                        )}
+                      </td>
+
                       {user?.role === 'ADMIN' && (
                         <td className="px-5 py-4">
                           <p className="font-medium text-gray-800">
                             {item.doctor?.user?.fullname || 'Doctor'}
                           </p>
                           <p className="text-xs text-blue-600">
-                            {(item.doctor as { department?: string })?.department || 'General'}
+                            {item.doctor?.department || 'General'}
                           </p>
                         </td>
                       )}
+
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-1.5 text-xs text-gray-600">
                           <Calendar className="h-3.5 w-3.5 text-blue-500" />
@@ -245,14 +298,20 @@ export default function AppointmentsPage() {
                           </p>
                         )}
                       </td>
+
                       <td className="px-5 py-4">
-                        <span className="font-semibold text-gray-800">
-                          ৳{(item.doctor as { fee?: number })?.fee ?? 0}
-                        </span>
-                        <p className="text-[11px] font-medium text-amber-600">
-                          Pay on Arrival
+                        <span className="font-semibold text-gray-800">৳{fee}</span>
+                        <p
+                          className={`text-[11px] font-medium ${
+                            item.paymentStatus === 'PAID'
+                              ? 'text-emerald-600'
+                              : 'text-amber-600'
+                          }`}
+                        >
+                          {item.paymentStatus === 'PAID' ? 'Paid' : 'Unpaid (On Arrival)'}
                         </p>
                       </td>
+
                       <td className="px-5 py-4">
                         <span
                           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -260,6 +319,8 @@ export default function AppointmentsPage() {
                               ? 'bg-blue-100 text-blue-800'
                               : item.status === 'COMPLETED'
                               ? 'bg-emerald-100 text-emerald-800'
+                              : item.status === 'IN_PROGRESS'
+                              ? 'bg-purple-100 text-purple-800'
                               : item.status === 'PENDING'
                               ? 'bg-amber-100 text-amber-800'
                               : 'bg-rose-100 text-rose-800'
@@ -268,6 +329,7 @@ export default function AppointmentsPage() {
                           {item.status}
                         </span>
                       </td>
+
                       <td className="px-5 py-4 text-right">
                         {hasAccess ? (
                           <div className="flex items-center justify-end gap-1.5">
@@ -275,9 +337,7 @@ export default function AppointmentsPage() {
                               <button
                                 type="button"
                                 disabled={actionLoading}
-                                onClick={() =>
-                                  handleStatusUpdate(item.id, 'CONFIRMED')
-                                }
+                                onClick={() => handleStatusUpdate(item.id, 'CONFIRMED')}
                                 className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition cursor-pointer"
                               >
                                 <UserCheck className="h-3.5 w-3.5" />
@@ -288,27 +348,24 @@ export default function AppointmentsPage() {
                               <button
                                 type="button"
                                 disabled={actionLoading}
-                                onClick={() =>
-                                  handleStatusUpdate(item.id, 'COMPLETED')
-                                }
+                                onClick={() => handleStatusUpdate(item.id, 'COMPLETED')}
                                 className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50 transition cursor-pointer"
                               >
                                 <CheckCircle className="h-3.5 w-3.5" />
                                 <span>Complete</span>
                               </button>
                             )}
-                            {item.status !== 'CANCELLED' &&
-                              item.status !== 'COMPLETED' && (
-                                <button
-                                  type="button"
-                                  disabled={actionLoading}
-                                  onClick={() => handleCancelAppointment(item.id)}
-                                  className="rounded-md p-1 text-gray-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 transition cursor-pointer"
-                                  title="Cancel"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </button>
-                              )}
+                            {item.status !== 'CANCELLED' && item.status !== 'COMPLETED' && (
+                              <button
+                                type="button"
+                                disabled={actionLoading}
+                                onClick={() => handleCancelAppointment(item.id)}
+                                className="rounded-md p-1 text-gray-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 transition cursor-pointer"
+                                title="Cancel"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <span className="text-xs text-gray-400 italic">

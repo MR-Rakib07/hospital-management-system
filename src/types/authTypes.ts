@@ -1,7 +1,15 @@
 export type Role = 'PATIENT' | 'DOCTOR' | 'ADMIN' | 'STAFF'
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER'
 export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED'
-export type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
+export type AppointmentStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED'
+
+export type AppointmentType = 'ONLINE' | 'OFFLINE'
+export type PaymentStatus = 'UNPAID' | 'PAID' | 'REFUNDED'
 
 export type BloodGroup =
   | 'A_POSITIVE'
@@ -21,8 +29,12 @@ export interface DoctorProfile {
   designation?: string | null
   experience: number
   fee: number
+  teleconsultationFee?: number | null
   image?: string | null
   availableDays: string[]
+  visitingHours?: string | null
+  roomNumber?: string | null
+  floorNumber?: string | null
   isAvailable: boolean
   createdAt: string
   updatedAt: string
@@ -33,6 +45,17 @@ export interface AdminProfile {
   userId: string
   designation?: string | null
   department?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Prescription {
+  id: string
+  appointmentId: string
+  diagnosis?: string | null
+  medicines?: unknown
+  advice?: string | null
+  pdfUrl?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -60,14 +83,35 @@ export interface UserProfile {
 
 export interface AppointmentWithRelations {
   id: string
-  patientId: string
-  patient?: UserProfile
-  doctorId: string
-  doctor?: DoctorProfile & { user?: Pick<UserProfile, 'fullname' | 'phone' | 'email'> }
-  appointmentDate: string
   serialNumber: number
-  problemDetails?: string | null
+  appointmentDate: string
+  type: AppointmentType
   status: AppointmentStatus
+  problemDetails?: string | null
+
+  patientName: string
+  patientPhone: string
+  patientEmail: string
+  patientAge?: number | null
+  patientGender?: Gender | null
+
+  meetingRoomId?: string | null
+  meetingLink?: string | null
+
+  paymentStatus: PaymentStatus
+  transactionId?: string | null
+  paidAmount: number
+
+  patientId?: string | null
+  patient?: Pick<UserProfile, 'fullname' | 'phone' | 'email'> | null
+
+  doctorId: string
+  doctor?: DoctorProfile & {
+    user?: Pick<UserProfile, 'fullname' | 'phone' | 'email'>
+  }
+
+  prescription?: Prescription | null
+
   createdAt: string
   updatedAt: string
 }

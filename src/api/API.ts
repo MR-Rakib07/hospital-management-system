@@ -5,10 +5,12 @@ interface ApiProps {
 
 interface ApiResponse {
   message?: string
-  result?: {
-    accessToken?: string
-    token?: string
-  } | string
+  result?:
+    | {
+        accessToken?: string
+        token?: string
+      }
+    | string
   data?: {
     accessToken?: string
     token?: string
@@ -22,7 +24,9 @@ interface QueueItem {
   reject: (reason: Error) => void
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
+const RAW_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'
+const BASE_URL = RAW_BASE_URL.replace(/\/+$/, '')
 
 let isRefreshing = false
 let failedQueue: QueueItem[] = []
@@ -38,16 +42,27 @@ const processQueue = (error: Error | null, token: string | null = null): void =>
   failedQueue = []
 }
 
+const safeParseJson = async <R>(res: Response): Promise<R | null> => {
+  try {
+    return (await res.json()) as R
+  } catch {
+    return null
+  }
+}
+
 export const API = async <T = Record<string, string>>({
   endpoint,
   option = {},
 }: ApiProps): Promise<T> => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
-  const defaultHeaders: HeadersInit = {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  const targetUrl = `${BASE_URL}${cleanEndpoint}`
+
+  const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(option.headers || {}),
+    ...((option.headers as Record<string, string>) || {}),
   }
 
   const config: RequestInit = {
@@ -58,7 +73,7 @@ export const API = async <T = Record<string, string>>({
   }
 
   try {
-    const res = await fetch(`${BASE_URL}${endpoint}`, config)
+    const res = await fetch(targetUrl, config)
 
     const isAuthRequest =
       endpoint.includes('signin') ||
@@ -70,25 +85,21 @@ export const API = async <T = Record<string, string>>({
       if (isRefreshing) {
         return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject })
+        }).then(async (newToken: string): Promise<T> => {
+          const retryHeaders: HeadersInit = {
+            ...defaultHeaders,
+            Authorization: `Bearer ${newToken}`,
+          }
+          const retryRes = await fetch(targetUrl, {
+            ...config,
+            headers: retryHeaders,
+          })
+          const retryData = await safeParseJson<ApiResponse & T>(retryRes)
+          if (!retryRes.ok) {
+            throw new Error(retryData?.message || 'Request failed')
+          }
+          return (retryData || {}) as T
         })
-          .then(async (newToken: string): Promise<T> => {
-            const retryHeaders: HeadersInit = {
-              ...defaultHeaders,
-              Authorization: `Bearer ${newToken}`,
-            }
-            const retryRes = await fetch(`${BASE_URL}${endpoint}`, {
-              ...config,
-              headers: retryHeaders,
-            })
-            const retryData = (await retryRes.json()) as ApiResponse & T
-            if (!retryRes.ok) {
-              throw new Error(retryData?.message || 'Request failed')
-            }
-            return retryData
-          })
-          .catch((err: Error) => {
-            throw err
-          })
       }
 
       isRefreshing = true
@@ -102,7 +113,7 @@ export const API = async <T = Record<string, string>>({
           },
         })
 
-        const refreshData = (await refreshRes.json()) as ApiResponse
+        const refreshData = await safeParseJson<ApiResponse>(refreshRes)
 
         if (!refreshRes.ok) {
           throw new Error(refreshData?.message || 'Session expired')
@@ -136,18 +147,18 @@ export const API = async <T = Record<string, string>>({
           Authorization: `Bearer ${newAccessToken}`,
         }
 
-        const retryRes = await fetch(`${BASE_URL}${endpoint}`, {
+        const retryRes = await fetch(targetUrl, {
           ...config,
           headers: retryHeaders,
         })
 
-        const retryData = (await retryRes.json()) as ApiResponse & T
+        const retryData = await safeParseJson<ApiResponse & T>(retryRes)
 
         if (!retryRes.ok) {
           throw new Error(retryData?.message || 'Request failed after refresh')
         }
 
-        return retryData
+        return (retryData || {}) as T
       } catch (refreshErr) {
         const normalizedError =
           refreshErr instanceof Error ? refreshErr : new Error(String(refreshErr))
@@ -156,8 +167,8 @@ export const API = async <T = Record<string, string>>({
 
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token')
-          if (!window.location.pathname.includes('/')) {
-            window.location.href = '/'
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login'
           }
         }
 
@@ -167,14 +178,13 @@ export const API = async <T = Record<string, string>>({
       }
     }
 
-    const data = (await res.json()) as ApiResponse & T
+    const data = await safeParseJson<ApiResponse & T>(res)
 
     if (!res.ok) {
-      console.log(data?.message)
-      throw new Error(data?.message || 'Something went wrong')
+      throw new Error(data?.message || `HTTP ${res.status}: Request failed`)
     }
 
-    return data
+    return (data || {}) as T
   } catch (error) {
     if (error instanceof Error) {
       throw error
