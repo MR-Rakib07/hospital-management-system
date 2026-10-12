@@ -5,6 +5,10 @@ import type { AppointmentStatus, AppointmentWithRelations } from "@/types/authTy
 export type AppointmentType = "ONLINE" | "OFFLINE"
 export type Gender = "MALE" | "FEMALE" | "OTHER"
 
+export interface AppointmentWithCode extends AppointmentWithRelations {
+  formattedSerialCode?: string
+}
+
 export interface BookAppointmentPayload {
   doctorId: string
   appointmentDate: string
@@ -12,9 +16,15 @@ export interface BookAppointmentPayload {
   problemDetails?: string
   patientName: string
   patientPhone: string
-  patientEmail: string
+  patientEmail?: string
   patientAge?: number
   patientGender?: Gender
+}
+
+export interface FetchAppointmentsQuery {
+  doctorId?: string
+  date?: string
+  status?: AppointmentStatus
 }
 
 export interface UpdateStatusPayload {
@@ -42,12 +52,12 @@ const extractErrorMessage = (error: unknown, fallback: string): string => {
 }
 
 export const bookAppointmentThunk = createAsyncThunk<
-  AppointmentWithRelations,
+  AppointmentWithCode,
   BookAppointmentPayload,
   { rejectValue: string }
 >("appointments/book", async (payload, { rejectWithValue }) => {
   try {
-    const res = await API<ApiResponse<AppointmentWithRelations>>({
+    const res = await API<ApiResponse<AppointmentWithCode>>({
       endpoint: "/appointments/book",
       option: {
         method: "POST",
@@ -62,7 +72,7 @@ export const bookAppointmentThunk = createAsyncThunk<
 })
 
 export const fetchMyAppointmentsThunk = createAsyncThunk<
-  AppointmentWithRelations[],
+  AppointmentWithCode[],
   { phone?: string; email?: string } | undefined,
   { rejectValue: string }
 >("appointments/fetchMyAppointments", async (query, { rejectWithValue }) => {
@@ -73,7 +83,7 @@ export const fetchMyAppointmentsThunk = createAsyncThunk<
 
     const queryString = params.toString() ? `?${params.toString()}` : ""
 
-    const res = await API<ApiResponse<AppointmentWithRelations[]>>({
+    const res = await API<ApiResponse<AppointmentWithCode[]>>({
       endpoint: `/appointments/my-appointments${queryString}`,
       option: {
         method: "GET",
@@ -87,17 +97,25 @@ export const fetchMyAppointmentsThunk = createAsyncThunk<
 })
 
 export const fetchAppointmentsThunk = createAsyncThunk<
-  AppointmentWithRelations[],
-  string | undefined,
+  AppointmentWithCode[],
+  FetchAppointmentsQuery | string | undefined,
   { rejectValue: string }
->("appointments/fetchAppointments", async (dateQuery, { rejectWithValue }) => {
+>("appointments/fetchAppointments", async (filter, { rejectWithValue }) => {
   try {
-    const endpoint = dateQuery
-      ? `/appointments/doctor-schedule?date=${encodeURIComponent(dateQuery)}`
-      : "/appointments/doctor-schedule"
+    const params = new URLSearchParams()
 
-    const res = await API<ApiResponse<AppointmentWithRelations[]>>({
-      endpoint,
+    if (typeof filter === "string") {
+      if (filter.trim().length > 0) params.append("date", filter.trim())
+    } else if (filter) {
+      if (filter.doctorId) params.append("doctorId", filter.doctorId)
+      if (filter.date) params.append("date", filter.date)
+      if (filter.status) params.append("status", filter.status)
+    }
+
+    const queryString = params.toString() ? `?${params.toString()}` : ""
+
+    const res = await API<ApiResponse<AppointmentWithCode[]>>({
+      endpoint: `/appointments/doctor-schedule${queryString}`,
       option: {
         method: "GET",
       },
@@ -110,12 +128,12 @@ export const fetchAppointmentsThunk = createAsyncThunk<
 })
 
 export const updateAppointmentStatusThunk = createAsyncThunk<
-  AppointmentWithRelations,
+  AppointmentWithCode,
   UpdateStatusPayload,
   { rejectValue: string }
 >("appointments/updateStatus", async ({ id, status }, { rejectWithValue }) => {
   try {
-    const res = await API<ApiResponse<AppointmentWithRelations>>({
+    const res = await API<ApiResponse<AppointmentWithCode>>({
       endpoint: `/appointments/${encodeURIComponent(id)}/status`,
       option: {
         method: "PATCH",
@@ -130,12 +148,12 @@ export const updateAppointmentStatusThunk = createAsyncThunk<
 })
 
 export const cancelAppointmentThunk = createAsyncThunk<
-  AppointmentWithRelations,
+  AppointmentWithCode,
   string,
   { rejectValue: string }
 >("appointments/cancel", async (id, { rejectWithValue }) => {
   try {
-    const res = await API<ApiResponse<AppointmentWithRelations>>({
+    const res = await API<ApiResponse<AppointmentWithCode>>({
       endpoint: `/appointments/${encodeURIComponent(id)}/cancel`,
       option: {
         method: "PATCH",
@@ -149,8 +167,8 @@ export const cancelAppointmentThunk = createAsyncThunk<
 })
 
 interface AppointmentState {
-  appointments: AppointmentWithRelations[]
-  lastBookedAppointment: AppointmentWithRelations | null
+  appointments: AppointmentWithCode[]
+  lastBookedAppointment: AppointmentWithCode | null
   loading: boolean
   actionLoading: boolean
   error: string | null
@@ -194,7 +212,7 @@ const appointmentSlice = createSlice({
       })
       .addCase(
         bookAppointmentThunk.fulfilled,
-        (state, action: PayloadAction<AppointmentWithRelations>) => {
+        (state, action: PayloadAction<AppointmentWithCode>) => {
           state.actionLoading = false
           state.error = null
           state.lastBookedAppointment = action.payload
@@ -213,7 +231,7 @@ const appointmentSlice = createSlice({
       })
       .addCase(
         fetchMyAppointmentsThunk.fulfilled,
-        (state, action: PayloadAction<AppointmentWithRelations[]>) => {
+        (state, action: PayloadAction<AppointmentWithCode[]>) => {
           state.loading = false
           state.error = null
           state.appointments = action.payload
@@ -230,7 +248,7 @@ const appointmentSlice = createSlice({
       })
       .addCase(
         fetchAppointmentsThunk.fulfilled,
-        (state, action: PayloadAction<AppointmentWithRelations[]>) => {
+        (state, action: PayloadAction<AppointmentWithCode[]>) => {
           state.loading = false
           state.error = null
           state.appointments = action.payload
@@ -247,7 +265,7 @@ const appointmentSlice = createSlice({
       })
       .addCase(
         updateAppointmentStatusThunk.fulfilled,
-        (state, action: PayloadAction<AppointmentWithRelations>) => {
+        (state, action: PayloadAction<AppointmentWithCode>) => {
           state.actionLoading = false
           const updated = action.payload
           state.appointments = state.appointments.map((item) =>
@@ -267,7 +285,7 @@ const appointmentSlice = createSlice({
       })
       .addCase(
         cancelAppointmentThunk.fulfilled,
-        (state, action: PayloadAction<AppointmentWithRelations>) => {
+        (state, action: PayloadAction<AppointmentWithCode>) => {
           state.actionLoading = false
           const updated = action.payload
           state.appointments = state.appointments.map((item) =>
