@@ -67,16 +67,26 @@ interface ApiResponse<T> {
   data: T
 }
 
-const extractErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof Error) {
-    return error.message
+interface CustomErrorResponse {
+  message?: string
+}
+
+const extractErrorMessage = (err: unknown, fallback: string): string => {
+  if (err instanceof Error) {
+    return err.message
   }
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    const customErr = error as { message?: string }
-    if (typeof customErr.message === 'string') {
-      return customErr.message
+
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const errorWithMsg = err as CustomErrorResponse
+    if (typeof errorWithMsg.message === 'string') {
+      return errorWithMsg.message
     }
   }
+
+  if (typeof err === 'string') {
+    return err
+  }
+
   return fallback
 }
 
@@ -99,8 +109,27 @@ export const fetchDoctorsThunk = createAsyncThunk<
     })
 
     return res.data
-  } catch (error: unknown) {
+  } catch (error) {
     return rejectWithValue(extractErrorMessage(error, 'Failed to fetch doctors'))
+  }
+})
+
+export const fetchDoctorByIdThunk = createAsyncThunk<
+  DoctorWithProfile,
+  string,
+  { rejectValue: string }
+>('doctors/fetchDoctorById', async (id, { rejectWithValue }) => {
+  try {
+    const res = await API<ApiResponse<DoctorWithProfile>>({
+      endpoint: `/doctors/${id}`,
+      option: {
+        method: 'GET',
+      },
+    })
+
+    return res.data
+  } catch (error) {
+    return rejectWithValue(extractErrorMessage(error, 'Failed to fetch doctor details'))
   }
 })
 
@@ -119,7 +148,7 @@ export const createDoctorThunk = createAsyncThunk<
     })
 
     return res.data
-  } catch (error: unknown) {
+  } catch (error) {
     return rejectWithValue(extractErrorMessage(error, 'Failed to add doctor'))
   }
 })
@@ -139,7 +168,7 @@ export const updateDoctorThunk = createAsyncThunk<
     })
 
     return res.data
-  } catch (error: unknown) {
+  } catch (error) {
     return rejectWithValue(extractErrorMessage(error, 'Failed to update doctor'))
   }
 })
@@ -158,26 +187,30 @@ export const deleteDoctorThunk = createAsyncThunk<
     })
 
     return id
-  } catch (error: unknown) {
+  } catch (error) {
     return rejectWithValue(extractErrorMessage(error, 'Failed to delete doctor'))
   }
 })
 
 interface DoctorsState {
   doctors: DoctorWithProfile[]
+  selectedDoctor: DoctorWithProfile | null
   loading: boolean
   error: string | null
   actionLoading: boolean
   actionError: string | null
+  successMessage: string | null
   selectedDepartment: string | null
 }
 
 const initialState: DoctorsState = {
   doctors: [],
+  selectedDoctor: null,
   loading: false,
   error: null,
   actionLoading: false,
   actionError: null,
+  successMessage: null,
   selectedDepartment: null,
 }
 
@@ -188,16 +221,22 @@ const doctorSlice = createSlice({
     setSelectedDepartment: (state, action: PayloadAction<string | null>) => {
       state.selectedDepartment = action.payload
     },
+    setSelectedDoctor: (state, action: PayloadAction<DoctorWithProfile | null>) => {
+      state.selectedDoctor = action.payload
+    },
     clearActionStatus: (state) => {
       state.actionLoading = false
       state.actionError = null
+      state.successMessage = null
     },
     clearDoctorsState: (state) => {
       state.doctors = []
+      state.selectedDoctor = null
       state.loading = false
       state.error = null
       state.actionLoading = false
       state.actionError = null
+      state.successMessage = null
       state.selectedDepartment = null
     },
   },
@@ -213,27 +252,44 @@ const doctorSlice = createSlice({
       })
       .addCase(fetchDoctorsThunk.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload || 'Failed to load doctors'
+        state.error = action.payload ?? 'Failed to load doctors'
+      })
+
+    builder
+      .addCase(fetchDoctorByIdThunk.pending, (state) => {
+        state.actionLoading = true
+        state.actionError = null
+      })
+      .addCase(fetchDoctorByIdThunk.fulfilled, (state, action) => {
+        state.actionLoading = false
+        state.selectedDoctor = action.payload
+      })
+      .addCase(fetchDoctorByIdThunk.rejected, (state, action) => {
+        state.actionLoading = false
+        state.actionError = action.payload ?? 'Failed to fetch doctor details'
       })
 
     builder
       .addCase(createDoctorThunk.pending, (state) => {
         state.actionLoading = true
         state.actionError = null
+        state.successMessage = null
       })
       .addCase(createDoctorThunk.fulfilled, (state, action) => {
         state.actionLoading = false
         state.doctors.unshift(action.payload)
+        state.successMessage = 'Doctor registered successfully'
       })
       .addCase(createDoctorThunk.rejected, (state, action) => {
         state.actionLoading = false
-        state.actionError = action.payload || 'Failed to add doctor'
+        state.actionError = action.payload ?? 'Failed to add doctor'
       })
 
     builder
       .addCase(updateDoctorThunk.pending, (state) => {
         state.actionLoading = true
         state.actionError = null
+        state.successMessage = null
       })
       .addCase(updateDoctorThunk.fulfilled, (state, action) => {
         state.actionLoading = false
@@ -241,29 +297,42 @@ const doctorSlice = createSlice({
         if (index !== -1) {
           state.doctors[index] = action.payload
         }
+        if (state.selectedDoctor?.id === action.payload.id) {
+          state.selectedDoctor = action.payload
+        }
+        state.successMessage = 'Doctor profile updated successfully'
       })
       .addCase(updateDoctorThunk.rejected, (state, action) => {
         state.actionLoading = false
-        state.actionError = action.payload || 'Failed to update doctor'
+        state.actionError = action.payload ?? 'Failed to update doctor'
       })
 
     builder
       .addCase(deleteDoctorThunk.pending, (state) => {
         state.actionLoading = true
         state.actionError = null
+        state.successMessage = null
       })
       .addCase(deleteDoctorThunk.fulfilled, (state, action) => {
         state.actionLoading = false
         state.doctors = state.doctors.filter((doc) => doc.id !== action.payload)
+        if (state.selectedDoctor?.id === action.payload) {
+          state.selectedDoctor = null
+        }
+        state.successMessage = 'Doctor removed successfully'
       })
       .addCase(deleteDoctorThunk.rejected, (state, action) => {
         state.actionLoading = false
-        state.actionError = action.payload || 'Failed to remove doctor'
+        state.actionError = action.payload ?? 'Failed to remove doctor'
       })
   },
 })
 
-export const { setSelectedDepartment, clearActionStatus, clearDoctorsState } =
-  doctorSlice.actions
+export const {
+  setSelectedDepartment,
+  setSelectedDoctor,
+  clearActionStatus,
+  clearDoctorsState,
+} = doctorSlice.actions
 
 export default doctorSlice.reducer

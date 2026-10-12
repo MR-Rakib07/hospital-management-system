@@ -27,9 +27,17 @@ function ProfileNav({ className = '' }: ProfileProps) {
     router.push('/')
   }
 
-  const isStaffOrAdminOrDoctor = user?.role === 'ADMIN' || user?.role === 'DOCTOR'
-  const dashboardLink = user?.role === 'ADMIN' ? '/dashboard' : '/dashboard'
+  const isStaffOrAdminOrDoctor =
+  user?.role === 'ADMIN' || user?.role === 'DOCTOR' || user?.role === 'STAFF'
 
+const dashboardLink =
+  user?.role === 'ADMIN'
+    ? '/admin'
+    : user?.role === 'DOCTOR'
+      ? '/doctor'
+      : user?.role === 'STAFF'
+        ? '/staff'
+        : '/signin'
   return (
     <div
       className={`${className} absolute top-5 right-0 w-64 bg-white shadow-xl rounded-xl border border-gray-100 overflow-hidden z-50`}
