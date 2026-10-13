@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import type { AppointmentWithCode } from '@/redux/appointment/appointmentSlice'
+import type { AppointmentWithRelations } from '@/types/authTypes'
 
 interface Props {
-  appointment: AppointmentWithCode
+  appointment: AppointmentWithRelations
   fee: number
 }
 
@@ -16,7 +16,7 @@ export default function AppointmentSuccessCard({ appointment, fee }: Props) {
         <p>
           <strong>Serial Code:</strong>{' '}
           <span className="font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
-            {appointment.formattedSerialCode || `#${appointment.serialNumber}`}
+            {appointment.serialCode || `#${appointment.serialNumber}`}
           </span>
         </p>
         <p>
