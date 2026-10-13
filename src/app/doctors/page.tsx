@@ -125,7 +125,6 @@ export default function DoctorsPage() {
                     image={doctorProfile.image}
                     name={doctor.fullname}
                     department={doctorProfile.department}
-                    specialization={doctorProfile.specialization}
                     designation={doctorProfile.designation}
                     experience={doctorProfile.experience}
                     location={doctor.presentAddress}
