@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppointmentType } from '@/redux/appointment/appointmentSlice'
+import type { AppointmentType } from '@/types/authTypes'
 
 interface Props {
   type: AppointmentType
