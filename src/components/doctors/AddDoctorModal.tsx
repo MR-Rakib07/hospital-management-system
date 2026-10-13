@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { createDoctorThunk, type CreateDoctorPayload } from '@/redux/doctor/doctorFetchSlice'
-import { fetchDoctorConfigThunk, type DepartmentItem } from '@/redux/department/departmentSlice'
+import { fetchRoleConfigThunk, type DepartmentItem } from '@/redux/department/departmentSlice'
 import { X, Loader2 } from 'lucide-react'
 
 interface AddDoctorModalProps {
@@ -50,12 +50,11 @@ export default function AddDoctorModal({ isOpen, onClose }: AddDoctorModalProps)
   const { actionLoading, actionError } = useAppSelector((state) => state.doctors)
   const {
     departments,
-    designations,
+    configDesignationNames,
     loading: loadingConfig,
   } = useAppSelector((state) => state.department)
 
   const [department, setDepartment] = useState<string>('')
-  const [specialization, setSpecialization] = useState<string>('')
   const [designation, setDesignation] = useState<string>('')
   const [availableDays, setAvailableDays] = useState<string[]>([])
   const [startTime, setStartTime] = useState<string>('17:00')
@@ -64,33 +63,26 @@ export default function AddDoctorModal({ isOpen, onClose }: AddDoctorModalProps)
 
   useEffect(() => {
     if (isOpen) {
-      void dispatch(fetchDoctorConfigThunk())
+      void dispatch(fetchRoleConfigThunk('DOCTOR'))
     }
   }, [isOpen, dispatch])
 
   useEffect(() => {
-    if (departments.length > 0 && department.length === 0) {
+    if (departments.length > 0 && !department) {
       setDepartment(departments[0].name)
-      if (departments[0].specializations.length > 0) {
-        setSpecialization(departments[0].specializations[0])
-      }
     }
   }, [departments, department])
 
   useEffect(() => {
-    if (designations.length > 0 && designation.length === 0) {
-      setDesignation(designations[0])
+    if (configDesignationNames.length > 0 && !designation) {
+      setDesignation(configDesignationNames[0])
     }
-  }, [designations, designation])
+  }, [configDesignationNames, designation])
 
   if (!isOpen) return null
 
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedDeptName = e.target.value
-    setDepartment(selectedDeptName)
-
-    const targetDept = departments.find((d: DepartmentItem) => d.name === selectedDeptName)
-    setSpecialization(targetDept?.specializations?.[0] || '')
+    setDepartment(e.target.value)
   }
 
   const handleDayToggle = (day: string) => {
@@ -111,29 +103,23 @@ export default function AddDoctorModal({ isOpen, onClose }: AddDoctorModalProps)
     return `${formatTimeStr(start)} - ${formatTimeStr(end)}`
   }
 
-  const currentSpecializations =
-    departments.find((d: DepartmentItem) => d.name === department)?.specializations || []
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    const payload: CreateDoctorPayload = {
+    const payload = {
       ...formData,
       department,
-      specialization,
       designation,
       availableDays,
       visitingHours: formatVisitingHours(startTime, endTime),
-    }
+    } as unknown as CreateDoctorPayload
 
     try {
       await dispatch(createDoctorThunk(payload)).unwrap()
       setFormData(INITIAL_FORM_STATE)
       setAvailableDays([])
       onClose()
-    } catch {
-      return
-    }
+    } catch {}
   }
 
   const isFormValid =
@@ -142,10 +128,8 @@ export default function AddDoctorModal({ isOpen, onClose }: AddDoctorModalProps)
     Boolean(formData.password.trim()) &&
     Boolean(formData.phone.trim()) &&
     Boolean(department.trim()) &&
-    Boolean(specialization.trim()) &&
-    availableDays.length > 0 &&
-    departments.length > 0 &&
-    designations.length > 0
+    Boolean(designation.trim()) &&
+    availableDays.length > 0
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
@@ -174,7 +158,7 @@ export default function AddDoctorModal({ isOpen, onClose }: AddDoctorModalProps)
         {loadingConfig ? (
           <div className="flex h-64 flex-col items-center justify-center gap-2">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-            <p className="text-xs text-gray-500">Loading departments and configuration...</p>
+            <p className="text-xs text-gray-500">Loading doctor departments and designations...</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -228,16 +212,35 @@ export default function AddDoctorModal({ isOpen, onClose }: AddDoctorModalProps)
               </div>
 
               <div>
+                <label className="block text-xs font-semibold text-gray-700">Department *</label>
+                <select
+                  value={department}
+                  onChange={handleDepartmentChange}
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer"
+                >
+                  {departments.length === 0 ? (
+                    <option value="">No department available</option>
+                  ) : (
+                    departments.map((dept: DepartmentItem) => (
+                      <option key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-gray-700">Designation *</label>
                 <select
                   value={designation}
                   onChange={(e) => setDesignation(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer"
                 >
-                  {designations.length === 0 ? (
+                  {configDesignationNames.length === 0 ? (
                     <option value="">No designation available</option>
                   ) : (
-                    designations.map((desig: string) => (
+                    configDesignationNames.map((desig: string) => (
                       <option key={desig} value={desig}>
                         {desig}
                       </option>
@@ -256,44 +259,6 @@ export default function AddDoctorModal({ isOpen, onClose }: AddDoctorModalProps)
                   onChange={(e) => setFormData({ ...formData, experience: Number(e.target.value) })}
                   className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700">Department *</label>
-                <select
-                  value={department}
-                  onChange={handleDepartmentChange}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                >
-                  {departments.length === 0 ? (
-                    <option value="">No department available</option>
-                  ) : (
-                    departments.map((dept: DepartmentItem) => (
-                      <option key={dept.id} value={dept.name}>
-                        {dept.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700">Specialization *</label>
-                <select
-                  value={specialization}
-                  onChange={(e) => setSpecialization(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                >
-                  {currentSpecializations.length === 0 ? (
-                    <option value="">No specialization available</option>
-                  ) : (
-                    currentSpecializations.map((spec: string) => (
-                      <option key={spec} value={spec}>
-                        {spec}
-                      </option>
-                    ))
-                  )}
-                </select>
               </div>
 
               <div>

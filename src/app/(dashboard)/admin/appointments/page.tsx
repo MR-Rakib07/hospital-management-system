@@ -4,7 +4,7 @@ import React, { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { clearAppointmentMessages } from '@/redux/appointment/appointmentSlice'
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
-import AdminAppointmentsView from '@/components/appointments/AdminAppointmentsView'
+import AppointmentsView from '@/components/appointments/AppointmentsView'
 
 export default function AdminAppointmentsPage() {
   const dispatch = useAppDispatch()
@@ -61,7 +61,7 @@ export default function AdminAppointmentsPage() {
         </div>
       )}
 
-      <AdminAppointmentsView />
+      <AppointmentsView userRole="ADMIN" />
     </div>
   )
 }

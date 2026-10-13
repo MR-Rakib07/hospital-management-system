@@ -18,7 +18,7 @@ export interface DoctorProfile {
   id: string
   userId?: string | null
   department: string
-  specialization: string
+  specialization?: string | null
   designation?: string | null
   experience: number
   fee: number
@@ -44,7 +44,7 @@ export interface CreateDoctorPayload {
   password: string
   phone: string
   department: string
-  specialization: string
+  specialization?: string
   designation?: string
   experience: number
   fee: number

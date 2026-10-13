@@ -4,15 +4,16 @@ import Container from '@/utils/Container'
 import { useState, useEffect, type FormEvent, useMemo, useCallback } from 'react'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { fetchDoctorsThunk, type DoctorWithProfile } from '@/redux/doctor/doctorFetchSlice'
-import { fetchDoctorConfigThunk, type DepartmentItem } from '@/redux/department/departmentSlice'
+import { fetchRoleConfigThunk, type DepartmentItem } from '@/redux/department/departmentSlice'
 import {
   bookAppointmentThunk,
   clearAppointmentMessages,
-  type AppointmentType,
-  type Gender,
 } from '@/redux/appointment/appointmentSlice'
+import type { Gender } from '@/types/authTypes'
 import AppointmentTypeToggle from './AppointmentTypeToggle'
 import AppointmentSuccessCard from './AppointmentSuccessCard'
+
+export type AppointmentType = 'ONLINE' | 'OFFLINE'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -42,7 +43,7 @@ export default function AppointmentForm() {
 
   useEffect(() => {
     void dispatch(fetchDoctorsThunk())
-    void dispatch(fetchDoctorConfigThunk())
+    void dispatch(fetchRoleConfigThunk('DOCTOR'))
   }, [dispatch])
 
   const getDoctorProfileId = (doc: DoctorWithProfile): string => {
@@ -168,7 +169,7 @@ export default function AppointmentForm() {
                 }}
                 required
                 disabled={departmentsLoading || departments.length === 0}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#396CF0] focus:ring-1 focus:ring-[#396CF0] outline-none text-sm bg-white"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#396CF0] focus:ring-1 focus:ring-[#396CF0] outline-none text-sm bg-white cursor-pointer"
               >
                 <option value="">Select Department</option>
                 {departments.map((dept: DepartmentItem) => (
@@ -186,7 +187,7 @@ export default function AppointmentForm() {
                 onChange={(e) => setSelectedDoctorProfileId(e.target.value)}
                 required
                 disabled={doctorsLoading || !selectedDepartment}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#396CF0] focus:ring-1 focus:ring-[#396CF0] outline-none text-sm bg-white"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#396CF0] focus:ring-1 focus:ring-[#396CF0] outline-none text-sm bg-white cursor-pointer"
               >
                 <option value="">Select Doctor</option>
                 {selectedDepartment && filteredDoctors.length === 0 ? (
@@ -235,7 +236,7 @@ export default function AppointmentForm() {
                 min={todayStr}
                 value={appointmentDate}
                 onChange={(e) => handleDateChange(e.target.value)}
-                className={`w-full px-4 py-3 rounded-xl border outline-none text-sm ${
+                className={`w-full px-4 py-3 rounded-xl border outline-none text-sm cursor-pointer ${
                   dateError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#396CF0]'
                 }`}
               />
@@ -264,7 +265,7 @@ export default function AppointmentForm() {
               <select
                 value={patientGender}
                 onChange={(e) => setPatientGender(e.target.value as Gender)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#396CF0] outline-none text-sm bg-white"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#396CF0] outline-none text-sm bg-white cursor-pointer"
               >
                 <option value="MALE">MALE</option>
                 <option value="FEMALE">FEMALE</option>

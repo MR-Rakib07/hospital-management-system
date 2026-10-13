@@ -4,7 +4,7 @@ import React, { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { clearAppointmentMessages } from '@/redux/appointment/appointmentSlice'
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
-import StaffAppointmentsView from '@/components/appointments/StaffAppointmentsView'
+import AppointmentsView from '@/components/appointments/AppointmentsView'
 
 export default function StaffAppointmentsPage() {
   const dispatch = useAppDispatch()
@@ -23,15 +23,15 @@ export default function StaffAppointmentsPage() {
   if (profileLoading && !user) {
     return (
       <div className="flex h-64 w-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
       </div>
     )
   }
 
-  if (user?.role !== 'STAFF') {
+  if (user?.role !== 'STAFF' && user?.role !== 'ADMIN') {
     return (
       <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-center text-sm font-medium text-rose-800">
-        You do not have front-desk clearance to manage check-ins.
+        You do not have staff permissions to view this desk.
       </div>
     )
   }
@@ -40,9 +40,9 @@ export default function StaffAppointmentsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Front Desk Counter Desk</h2>
+          <h2 className="text-xl font-bold text-gray-800">Staff Desk Appointments</h2>
           <p className="text-xs sm:text-sm text-gray-500">
-            Verify patient appointment tokens, manage arrivals, and confirm physical check-ins
+            Pending verification, confirmed appointments, and patient completion desk
           </p>
         </div>
       </div>
@@ -61,7 +61,7 @@ export default function StaffAppointmentsPage() {
         </div>
       )}
 
-      <StaffAppointmentsView />
+      <AppointmentsView userRole="STAFF" />
     </div>
   )
 }

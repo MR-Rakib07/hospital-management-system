@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { X, Loader2, UserPlus } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
-import { createStaffThunk, CreateStaffPayload } from '@/redux/staff/staffSlice'
+import { createStaffThunk, type CreateStaffPayload } from '@/redux/staff/staffSlice'
+import { fetchDepartmentsThunk } from '@/redux/department/departmentSlice'
 
 interface AddStaffModalProps {
   isOpen: boolean
@@ -23,7 +24,14 @@ const initialFormState: CreateStaffPayload = {
 export default function AddStaffModal({ isOpen, onClose }: AddStaffModalProps) {
   const dispatch = useAppDispatch()
   const { actionLoading, actionError } = useAppSelector((state) => state.staff)
+  const { departments, loading: deptLoading } = useAppSelector((state) => state.department)
   const [formData, setFormData] = useState<CreateStaffPayload>(initialFormState)
+
+  useEffect(() => {
+    if (isOpen) {
+      void dispatch(fetchDepartmentsThunk('STAFF'))
+    }
+  }, [isOpen, dispatch])
 
   if (!isOpen) return null
 
@@ -43,9 +51,7 @@ export default function AddStaffModal({ isOpen, onClose }: AddStaffModalProps) {
       await dispatch(createStaffThunk(formData)).unwrap()
       setFormData(initialFormState)
       onClose()
-    } catch {
-      // Redux slice actionError handles display
-    }
+    } catch {}
   }
 
   return (
@@ -139,7 +145,7 @@ export default function AddStaffModal({ isOpen, onClose }: AddStaffModalProps) {
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 bg-white"
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 bg-white cursor-pointer"
               >
                 <option value="MALE">Male</option>
                 <option value="FEMALE">Female</option>
@@ -150,15 +156,24 @@ export default function AddStaffModal({ isOpen, onClose }: AddStaffModalProps) {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-gray-700">Department</label>
-              <input
-                type="text"
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-gray-700">Department</label>
+                {deptLoading && <Loader2 className="h-3 w-3 animate-spin text-indigo-600" />}
+              </div>
+              <select
                 name="department"
                 value={formData.department}
                 onChange={handleChange}
-                placeholder="e.g. Front Desk, Billing"
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-              />
+                disabled={deptLoading}
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 bg-white disabled:bg-gray-50 cursor-pointer"
+              >
+                <option value="">Select Staff Department</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.name}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

@@ -1,7 +1,9 @@
+export type RoleType = 'DOCTOR' | 'STAFF'
+
 export interface DepartmentItem {
   id: string
   name: string
-  specializations: string[]
+  roleType: RoleType
   createdAt?: string
   updatedAt?: string
 }
@@ -9,13 +11,14 @@ export interface DepartmentItem {
 export interface DesignationItem {
   id: string
   name: string
+  roleType: RoleType
   createdAt?: string
   updatedAt?: string
 }
 
 export interface ApiResponse<T> {
   success: boolean
-  message?: string
+  message: string
   data: T
 }
 

@@ -1,6 +1,8 @@
 export type Role = 'PATIENT' | 'DOCTOR' | 'ADMIN' | 'STAFF'
+export type RoleType = 'DOCTOR' | 'STAFF'
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER'
 export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED'
+
 export type AppointmentStatus =
   | 'PENDING'
   | 'CONFIRMED'
@@ -21,9 +23,25 @@ export type BloodGroup =
   | 'O_POSITIVE'
   | 'O_NEGATIVE'
 
+export interface DepartmentItem {
+  id: string
+  name: string
+  roleType: RoleType
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface DesignationItem {
+  id: string
+  name: string
+  roleType: RoleType
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface DoctorProfile {
   id: string
-  userId: string
+  userId?: string | null
   department: string
   specialization: string
   designation?: string | null
@@ -36,14 +54,24 @@ export interface DoctorProfile {
   roomNumber?: string | null
   floorNumber?: string | null
   isAvailable: boolean
+  isEmployed: boolean
   createdAt: string
   updatedAt: string
 }
 
 export interface AdminProfile {
   id: string
-  userId: string
+  userId?: string | null
   designation?: string | null
+  department?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StaffProfile {
+  id: string
+  userId?: string | null
+  counterNumber?: string | null
   department?: string | null
   createdAt: string
   updatedAt: string
@@ -53,7 +81,7 @@ export interface Prescription {
   id: string
   appointmentId: string
   diagnosis?: string | null
-  medicines?: unknown
+  medicines?: Record<string, unknown> | null
   advice?: string | null
   pdfUrl?: string | null
   createdAt: string
@@ -75,8 +103,11 @@ export interface UserProfile {
   emergencyContactName?: string | null
   emergencyRelation?: string | null
   emergencyPhone?: string | null
+  isActive?: boolean
+  isDeleted?: boolean
   doctorProfile?: DoctorProfile | null
   adminProfile?: AdminProfile | null
+  staffProfile?: StaffProfile | null
   createdAt: string
   updatedAt: string
 }
@@ -84,6 +115,7 @@ export interface UserProfile {
 export interface AppointmentWithRelations {
   id: string
   serialNumber: number
+  serialCode?: string | null
   appointmentDate: string
   type: AppointmentType
   status: AppointmentStatus
@@ -91,7 +123,7 @@ export interface AppointmentWithRelations {
 
   patientName: string
   patientPhone: string
-  patientEmail: string
+  patientEmail?: string | null
   patientAge?: number | null
   patientGender?: Gender | null
 
@@ -105,10 +137,10 @@ export interface AppointmentWithRelations {
   patientId?: string | null
   patient?: Pick<UserProfile, 'fullname' | 'phone' | 'email'> | null
 
-  doctorId: string
-  doctor?: DoctorProfile & {
-    user?: Pick<UserProfile, 'fullname' | 'phone' | 'email'>
-  }
+  doctorId?: string | null
+  doctor?: (DoctorProfile & {
+    user?: Pick<UserProfile, 'fullname' | 'phone' | 'email'> | null
+  }) | null
 
   prescription?: Prescription | null
 
