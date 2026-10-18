@@ -7,12 +7,10 @@ import {
   User,
   Calendar,
   Stethoscope,
-  Video,
   Building,
   CreditCard,
   FileText,
 } from 'lucide-react'
-import Link from 'next/link'
 
 interface AppointmentViewModalProps {
   appointment: AppointmentWithRelations | null
@@ -36,15 +34,19 @@ export default function AppointmentViewModal({
       })
     : 'Not Scheduled'
 
+  const serial = appointment.formattedSerialCode || appointment.serialCode || (appointment.serialNumber ? `SL-${appointment.serialNumber}` : null)
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
       <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
         <div className="flex items-start justify-between border-b border-gray-100 pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="rounded-md bg-blue-50 px-2.5 py-1 font-mono text-xs font-bold text-blue-700 border border-blue-100">
-                {appointment.serialCode || `SL-${appointment.serialNumber}`}
-              </span>
+              {serial && (
+                <span className="rounded-md bg-blue-50 px-2.5 py-1 font-mono text-xs font-bold text-blue-700 border border-blue-100">
+                  {serial}
+                </span>
+              )}
               <span
                 className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                   appointment.status === 'CONFIRMED'
@@ -126,39 +128,28 @@ export default function AppointmentViewModal({
                 <span className="text-gray-800">{formattedDate}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                {appointment.type === 'ONLINE' ? (
-                  <>
-                    <Video className="h-3.5 w-3.5 text-purple-600" />
-                    <span className="text-purple-700 font-medium">Online Consultation</span>
-                  </>
-                ) : (
-                  <>
-                    <Building className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="text-emerald-700 font-medium">Chamber (Offline)</span>
-                  </>
-                )}
+                <Building className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="text-emerald-700 font-medium">Offline (Counter)</span>
               </div>
             </div>
 
-            {appointment.type === 'ONLINE' && appointment.meetingLink && (
+            {(appointment.doctor?.roomNumber || appointment.doctor?.floorNumber) && (
               <div className="pt-2 border-t border-gray-200">
-                <span className="text-gray-400">Meeting Link: </span>
-                <Link
-                  href={appointment.meetingLink}
-                  target="_blank"
-                  className="font-medium text-blue-600 hover:underline break-all"
-                >
-                  {appointment.meetingLink}
-                </Link>
+                <span className="text-gray-400">Location: </span>
+                <span className="font-medium text-gray-700">
+                  {appointment.doctor?.roomNumber ? `Room ${appointment.doctor.roomNumber}` : ''}
+                  {appointment.doctor?.roomNumber && appointment.doctor?.floorNumber ? ', ' : ''}
+                  {appointment.doctor?.floorNumber ? `Floor ${appointment.doctor.floorNumber}` : ''}
+                </span>
               </div>
             )}
           </div>
 
           <div className="rounded-xl border border-gray-100 bg-gray-50/75 p-4 space-y-2">
             <h4 className="font-semibold text-gray-800 text-sm flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-blue-600" /> Billing Details
+              <CreditCard className="h-4 w-4 text-blue-600" /> Billing Details (Counter Payment)
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <div>
                 <span className="text-gray-400">Paid Amount:</span>{' '}
                 <strong className="text-gray-900">৳{appointment.paidAmount}</strong>
@@ -173,12 +164,6 @@ export default function AppointmentViewModal({
                   {appointment.paymentStatus}
                 </span>
               </div>
-              {appointment.transactionId && (
-                <div>
-                  <span className="text-gray-400">TxID:</span>{' '}
-                  <span className="font-mono text-gray-700">{appointment.transactionId}</span>
-                </div>
-              )}
             </div>
           </div>
 

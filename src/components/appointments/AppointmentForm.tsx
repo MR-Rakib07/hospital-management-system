@@ -10,10 +10,7 @@ import {
   clearAppointmentMessages,
 } from '@/redux/appointment/appointmentSlice'
 import type { Gender } from '@/types/authTypes'
-import AppointmentTypeToggle from './AppointmentTypeToggle'
 import AppointmentSuccessCard from './AppointmentSuccessCard'
-
-export type AppointmentType = 'ONLINE' | 'OFFLINE'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -29,7 +26,6 @@ export default function AppointmentForm() {
     lastBookedAppointment,
   } = useAppSelector((state) => state.appointment)
 
-  const [appointmentType, setAppointmentType] = useState<AppointmentType>('OFFLINE')
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [selectedDoctorProfileId, setSelectedDoctorProfileId] = useState('')
   const [appointmentDate, setAppointmentDate] = useState('')
@@ -75,7 +71,7 @@ export default function AppointmentForm() {
       const dayName = DAY_NAMES[new Date(Date.UTC(+parts[0], +parts[1] - 1, +parts[2])).getUTCDay()]
       const normalizedDays = availableDaysRaw.map((d: string) => d.trim().toLowerCase())
 
-      if (normalizedDays.length > 0 && !normalizedDays.includes(dayName.toLowerCase())) {
+      if (normalizedDays.length > 0 && dayName && !normalizedDays.includes(dayName.toLowerCase())) {
         setDateError(`Doctor is unavailable on ${dayName}. Available: ${availableDaysRaw.join(', ')}`)
       } else {
         setDateError('')
@@ -94,11 +90,8 @@ export default function AppointmentForm() {
   }, [appointmentDate, validateSelectedDate])
 
   const consultationFee = useMemo(() => {
-    if (!activeDoctor?.doctorProfile) return 0
-    return appointmentType === 'ONLINE'
-      ? activeDoctor.doctorProfile.teleconsultationFee ?? activeDoctor.doctorProfile.fee
-      : activeDoctor.doctorProfile.fee
-  }, [activeDoctor, appointmentType])
+    return activeDoctor?.doctorProfile?.fee ?? 0
+  }, [activeDoctor])
 
   const isSubmitDisabled =
     isBooking ||
@@ -117,7 +110,6 @@ export default function AppointmentForm() {
       bookAppointmentThunk({
         doctorId: selectedDoctorProfileId,
         appointmentDate,
-        type: appointmentType,
         patientName: patientName.trim(),
         patientPhone: patientPhone.trim(),
         patientEmail: patientEmail.trim() || undefined,
@@ -133,8 +125,6 @@ export default function AppointmentForm() {
   return (
     <Container>
       <div className="max-w-4xl mx-auto my-12 bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-xs">
-        <AppointmentTypeToggle type={appointmentType} onChange={setAppointmentType} />
-
         {bookingError && (
           <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-600 text-sm font-medium border border-red-200">
             {bookingError}
@@ -286,7 +276,7 @@ export default function AppointmentForm() {
           </div>
 
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-            <span className="text-sm font-medium text-gray-600">Total Consultation Fee:</span>
+            <span className="text-sm font-medium text-gray-600">Total Consultation Fee (Pay at Counter):</span>
             <span className="text-xl font-bold text-[#396CF0]">৳ {consultationFee}</span>
           </div>
 

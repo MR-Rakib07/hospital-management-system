@@ -6,6 +6,9 @@ import {
   fetchAppointmentsThunk,
   updateAppointmentStatusThunk,
   cancelAppointmentThunk,
+  updateAppointmentThunk,
+  type UpdateAppointmentPayload,
+  type CounterPaymentStatus,
 } from '@/redux/appointment/appointmentSlice'
 import type { AppointmentStatus, AppointmentWithRelations } from '@/types/authTypes'
 import { Calendar, RefreshCw, Search, X } from 'lucide-react'
@@ -33,15 +36,31 @@ export default function AppointmentsView({ userRole }: AppointmentsViewProps) {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString())
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
-  const [typeFilter, setTypeFilter] = useState<string>('ALL')
+  const [paymentFilter, setPaymentFilter] = useState<string>('ALL')
   const [targetCancelItem, setTargetCancelItem] = useState<AppointmentWithRelations | null>(null)
 
   useEffect(() => {
     void dispatch(fetchAppointmentsThunk(selectedDate ? { date: selectedDate } : undefined))
   }, [dispatch, selectedDate])
 
-  const handleStatusUpdate = async (id: string, newStatus: AppointmentStatus) => {
-    await dispatch(updateAppointmentStatusThunk({ id, status: newStatus })).unwrap()
+  const handleStatusUpdate = async (
+    id: string,
+    newStatus: AppointmentStatus,
+    paymentStatus?: CounterPaymentStatus,
+    paidAmount?: number
+  ) => {
+    await dispatch(
+      updateAppointmentStatusThunk({
+        id,
+        status: newStatus,
+        paymentStatus,
+        paidAmount,
+      })
+    ).unwrap()
+  }
+
+  const handleUpdateDetails = async (payload: UpdateAppointmentPayload) => {
+    await dispatch(updateAppointmentThunk(payload)).unwrap()
   }
 
   const handleRequestCancel = (id: string) => {
@@ -55,7 +74,7 @@ export default function AppointmentsView({ userRole }: AppointmentsViewProps) {
       await dispatch(cancelAppointmentThunk(targetCancelItem.id)).unwrap()
       setTargetCancelItem(null)
     } catch {
-      // Handled by redux state
+      return
     }
   }
 
@@ -75,6 +94,7 @@ export default function AppointmentsView({ userRole }: AppointmentsViewProps) {
 
       const matchesSearch =
         !query ||
+        item.formattedSerialCode?.toLowerCase().includes(query) ||
         item.serialCode?.toLowerCase().includes(query) ||
         String(item.serialNumber).includes(query) ||
         item.patientName.toLowerCase().includes(query) ||
@@ -83,11 +103,11 @@ export default function AppointmentsView({ userRole }: AppointmentsViewProps) {
         Boolean(item.doctor?.department && item.doctor.department.toLowerCase().includes(query))
 
       const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter
-      const matchesType = typeFilter === 'ALL' || item.type === typeFilter
+      const matchesPayment = paymentFilter === 'ALL' || item.paymentStatus === paymentFilter
 
-      return matchesSearch && matchesStatus && matchesType
+      return matchesSearch && matchesStatus && matchesPayment
     })
-  }, [appointments, searchTerm, statusFilter, typeFilter, userRole])
+  }, [appointments, searchTerm, statusFilter, paymentFilter, userRole])
 
   return (
     <div className="space-y-4">
@@ -128,7 +148,7 @@ export default function AppointmentsView({ userRole }: AppointmentsViewProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -161,13 +181,13 @@ export default function AppointmentsView({ userRole }: AppointmentsViewProps) {
             </select>
 
             <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
               className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 outline-none focus:border-blue-500 shadow-xs cursor-pointer"
             >
-              <option value="ALL">All Types</option>
-              <option value="OFFLINE">Offline</option>
-              <option value="ONLINE">Online</option>
+              <option value="ALL">All Payments</option>
+              <option value="UNPAID">Unpaid</option>
+              <option value="PAID">Paid</option>
             </select>
 
             <button
@@ -207,12 +227,14 @@ export default function AppointmentsView({ userRole }: AppointmentsViewProps) {
         canModify={() => true}
         onStatusUpdate={handleStatusUpdate}
         onCancelAppointment={handleRequestCancel}
+        onUpdateDetails={handleUpdateDetails}
       />
 
       <CancelConfirmModal
         isOpen={Boolean(targetCancelItem)}
         patientName={targetCancelItem?.patientName}
         serialCode={
+          targetCancelItem?.formattedSerialCode ||
           targetCancelItem?.serialCode ||
           (targetCancelItem ? `SL-${targetCancelItem.serialNumber}` : null)
         }

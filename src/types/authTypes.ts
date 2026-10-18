@@ -10,8 +10,7 @@ export type AppointmentStatus =
   | 'COMPLETED'
   | 'CANCELLED'
 
-export type AppointmentType = 'ONLINE' | 'OFFLINE'
-export type PaymentStatus = 'UNPAID' | 'PAID' | 'REFUNDED'
+export type PaymentStatus = 'UNPAID' | 'PAID'
 
 export type BloodGroup =
   | 'A_POSITIVE'
@@ -43,11 +42,10 @@ export interface DoctorProfile {
   id: string
   userId?: string | null
   department: string
-  specialization: string
+  specialization?: string
   designation?: string | null
   experience: number
   fee: number
-  teleconsultationFee?: number | null
   image?: string | null
   availableDays: string[]
   visitingHours?: string | null
@@ -77,11 +75,18 @@ export interface StaffProfile {
   updatedAt: string
 }
 
+export interface MedicineItem {
+  name?: string
+  dosage?: string
+  duration?: string
+  instruction?: string
+}
+
 export interface Prescription {
   id: string
   appointmentId: string
   diagnosis?: string | null
-  medicines?: Record<string, unknown> | null
+  medicines?: MedicineItem[] | Record<string, string | number | boolean | null> | null
   advice?: string | null
   pdfUrl?: string | null
   createdAt: string
@@ -116,8 +121,8 @@ export interface AppointmentWithRelations {
   id: string
   serialNumber: number
   serialCode?: string | null
+  formattedSerialCode?: string
   appointmentDate: string
-  type: AppointmentType
   status: AppointmentStatus
   problemDetails?: string | null
 
@@ -127,11 +132,7 @@ export interface AppointmentWithRelations {
   patientAge?: number | null
   patientGender?: Gender | null
 
-  meetingRoomId?: string | null
-  meetingLink?: string | null
-
   paymentStatus: PaymentStatus
-  transactionId?: string | null
   paidAmount: number
 
   patientId?: string | null
@@ -148,7 +149,7 @@ export interface AppointmentWithRelations {
   updatedAt: string
 }
 
-export interface ApiResponse<T = unknown> {
+export interface ApiResponse<T = null> {
   success: boolean
   message: string
   data?: T

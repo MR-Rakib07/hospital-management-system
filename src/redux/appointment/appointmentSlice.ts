@@ -2,21 +2,25 @@ import { API } from "@/api/API"
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit"
 import type {
   AppointmentStatus,
-  AppointmentType,
   AppointmentWithRelations,
   Gender,
 } from "@/types/authTypes"
+import type { PatientUpdatePayload } from "@/components/appointments/PatientAppointmentEditModal"
+
+export type AppointmentWithCode = AppointmentWithRelations
+
+export type CounterPaymentStatus = "UNPAID" | "PAID"
 
 export interface BookAppointmentPayload {
   doctorId: string
   appointmentDate: string
-  type: AppointmentType
-  problemDetails?: string
+  problemDetails?: string | null
   patientName: string
   patientPhone: string
-  patientEmail?: string
-  patientAge?: number
-  patientGender?: Gender
+  patientEmail?: string | null
+  patientAge?: number | null
+  patientGender?: Gender | null
+  patientId?: string | null
 }
 
 export interface FetchAppointmentsQuery {
@@ -28,6 +32,13 @@ export interface FetchAppointmentsQuery {
 export interface UpdateStatusPayload {
   id: string
   status: AppointmentStatus
+  paymentStatus?: CounterPaymentStatus
+  paidAmount?: number
+}
+
+export type UpdateAppointmentPayload = Omit<PatientUpdatePayload, "type"> & {
+  paymentStatus?: CounterPaymentStatus
+  paidAmount?: number
 }
 
 interface ApiResponse<T> {
@@ -37,18 +48,19 @@ interface ApiResponse<T> {
 }
 
 interface CustomErrorResponse {
-  message?: string
+  message: string
 }
 
-const extractErrorMessage = (error: unknown, fallback: string): string => {
+const isCustomErrorResponse = (val: object): val is CustomErrorResponse => {
+  return "message" in val && typeof (val as CustomErrorResponse).message === "string"
+}
+
+const extractErrorMessage = (error: Error | CustomErrorResponse | string | null | undefined, fallback: string): string => {
   if (error instanceof Error) {
     return error.message
   }
-  if (typeof error === "object" && error !== null && "message" in error) {
-    const customErr = error as CustomErrorResponse
-    if (typeof customErr.message === "string") {
-      return customErr.message
-    }
+  if (typeof error === "object" && error !== null && isCustomErrorResponse(error)) {
+    return error.message
   }
   if (typeof error === "string") {
     return error
@@ -71,7 +83,12 @@ export const bookAppointmentThunk = createAsyncThunk<
     })
     return res.data
   } catch (error) {
-    return rejectWithValue(extractErrorMessage(error, "Failed to book appointment."))
+    return rejectWithValue(
+      extractErrorMessage(
+        error as Error | CustomErrorResponse | string | null | undefined,
+        "Failed to book appointment."
+      )
+    )
   }
 })
 
@@ -95,7 +112,12 @@ export const fetchMyAppointmentsThunk = createAsyncThunk<
     })
     return res.data ?? []
   } catch (error) {
-    return rejectWithValue(extractErrorMessage(error, "Failed to fetch your appointments."))
+    return rejectWithValue(
+      extractErrorMessage(
+        error as Error | CustomErrorResponse | string | null | undefined,
+        "Failed to fetch your appointments."
+      )
+    )
   }
 })
 
@@ -125,7 +147,12 @@ export const fetchAppointmentsThunk = createAsyncThunk<
     })
     return res.data ?? []
   } catch (error) {
-    return rejectWithValue(extractErrorMessage(error, "Failed to fetch appointments."))
+    return rejectWithValue(
+      extractErrorMessage(
+        error as Error | CustomErrorResponse | string | null | undefined,
+        "Failed to fetch appointments."
+      )
+    )
   }
 })
 
@@ -143,7 +170,12 @@ export const fetchAppointmentByIdThunk = createAsyncThunk<
     })
     return res.data
   } catch (error) {
-    return rejectWithValue(extractErrorMessage(error, "Failed to fetch appointment details."))
+    return rejectWithValue(
+      extractErrorMessage(
+        error as Error | CustomErrorResponse | string | null | undefined,
+        "Failed to fetch appointment details."
+      )
+    )
   }
 })
 
@@ -151,18 +183,48 @@ export const updateAppointmentStatusThunk = createAsyncThunk<
   AppointmentWithRelations,
   UpdateStatusPayload,
   { rejectValue: string }
->("appointments/updateStatus", async ({ id, status }, { rejectWithValue }) => {
+>("appointments/updateStatus", async ({ id, status, paymentStatus, paidAmount }, { rejectWithValue }) => {
   try {
     const res = await API<ApiResponse<AppointmentWithRelations>>({
       endpoint: `/appointments/${encodeURIComponent(id)}/status`,
       option: {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, paymentStatus, paidAmount }),
       },
     })
     return res.data
   } catch (error) {
-    return rejectWithValue(extractErrorMessage(error, "Failed to update appointment status."))
+    return rejectWithValue(
+      extractErrorMessage(
+        error as Error | CustomErrorResponse | string | null | undefined,
+        "Failed to update appointment status."
+      )
+    )
+  }
+})
+
+export const updateAppointmentThunk = createAsyncThunk<
+  AppointmentWithRelations,
+  UpdateAppointmentPayload,
+  { rejectValue: string }
+>("appointments/updateDetails", async (payload, { rejectWithValue }) => {
+  try {
+    const { id, ...body } = payload
+    const res = await API<ApiResponse<AppointmentWithRelations>>({
+      endpoint: `/appointments/${encodeURIComponent(id)}`,
+      option: {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      },
+    })
+    return res.data
+  } catch (error) {
+    return rejectWithValue(
+      extractErrorMessage(
+        error as Error | CustomErrorResponse | string | null | undefined,
+        "Failed to update appointment details."
+      )
+    )
   }
 })
 
@@ -180,7 +242,12 @@ export const cancelAppointmentThunk = createAsyncThunk<
     })
     return res.data
   } catch (error) {
-    return rejectWithValue(extractErrorMessage(error, "Failed to cancel appointment."))
+    return rejectWithValue(
+      extractErrorMessage(
+        error as Error | CustomErrorResponse | string | null | undefined,
+        "Failed to cancel appointment."
+      )
+    )
   }
 })
 
@@ -308,6 +375,26 @@ const appointmentSlice = createSlice({
       .addCase(updateAppointmentStatusThunk.rejected, (state, action) => {
         state.actionLoading = false
         state.error = action.payload ?? "Failed to update appointment status"
+      })
+
+      .addCase(updateAppointmentThunk.pending, (state) => {
+        state.actionLoading = true
+        state.error = null
+      })
+      .addCase(updateAppointmentThunk.fulfilled, (state, action) => {
+        state.actionLoading = false
+        const updated = action.payload
+        state.appointments = state.appointments.map((item) =>
+          item.id === updated.id ? updated : item
+        )
+        if (state.selectedAppointment?.id === updated.id) {
+          state.selectedAppointment = updated
+        }
+        state.successMessage = "Appointment details updated successfully"
+      })
+      .addCase(updateAppointmentThunk.rejected, (state, action) => {
+        state.actionLoading = false
+        state.error = action.payload ?? "Failed to update appointment details"
       })
 
       .addCase(cancelAppointmentThunk.pending, (state) => {

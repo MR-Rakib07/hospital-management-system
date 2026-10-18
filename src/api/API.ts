@@ -24,9 +24,11 @@ interface QueueItem {
   reject: (reason: Error) => void
 }
 
-const RAW_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'
-const BASE_URL = RAW_BASE_URL.replace(/\/+$/, '')
+const RAW_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+if (!RAW_BASE_URL) {
+  throw new Error("NEXT_PUBLIC_API_URL environment variable is not defined")
+}
+const BASE_URL = RAW_BASE_URL.replace(/\/+$/, "")
 
 let isRefreshing = false
 let failedQueue: QueueItem[] = []
@@ -54,13 +56,13 @@ export const API = async <T = Record<string, string>>({
   endpoint,
   option = {},
 }: ApiProps): Promise<T> => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
 
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`
   const targetUrl = `${BASE_URL}${cleanEndpoint}`
 
   const defaultHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((option.headers as Record<string, string>) || {}),
   }
@@ -68,20 +70,24 @@ export const API = async <T = Record<string, string>>({
   const config: RequestInit = {
     ...option,
     headers: defaultHeaders,
-    credentials: 'include',
-    cache: 'no-store',
+    credentials: "include",
+    cache: "no-store",
   }
 
   try {
     const res = await fetch(targetUrl, config)
 
     const isAuthRequest =
-      endpoint.includes('signin') ||
-      endpoint.includes('login') ||
-      endpoint.includes('signup') ||
-      endpoint.includes('refresh-token')
+      endpoint.includes("signin") ||
+      endpoint.includes("signup") ||
+      endpoint.includes("refresh-token")
 
     if (res.status === 401 && !isAuthRequest) {
+      if (!token) {
+        const guestData = await safeParseJson<ApiResponse & T>(res)
+        throw new Error(guestData?.message || "Unauthorized access")
+      }
+
       if (isRefreshing) {
         return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject })
@@ -96,7 +102,7 @@ export const API = async <T = Record<string, string>>({
           })
           const retryData = await safeParseJson<ApiResponse & T>(retryRes)
           if (!retryRes.ok) {
-            throw new Error(retryData?.message || 'Request failed')
+            throw new Error(retryData?.message || "Request failed")
           }
           return (retryData || {}) as T
         })
@@ -106,22 +112,22 @@ export const API = async <T = Record<string, string>>({
 
       try {
         const refreshRes = await fetch(`${BASE_URL}/auth/refresh-token`, {
-          method: 'POST',
-          credentials: 'include',
+          method: "POST",
+          credentials: "include",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         })
 
         const refreshData = await safeParseJson<ApiResponse>(refreshRes)
 
         if (!refreshRes.ok) {
-          throw new Error(refreshData?.message || 'Session expired')
+          throw new Error(refreshData?.message || "Session expired")
         }
 
         const rawResult = refreshData?.result
         const tokenFromResult =
-          typeof rawResult === 'string'
+          typeof rawResult === "string"
             ? rawResult
             : rawResult?.accessToken || rawResult?.token
 
@@ -133,11 +139,11 @@ export const API = async <T = Record<string, string>>({
           refreshData?.token
 
         if (!newAccessToken) {
-          throw new Error('New access token not received')
+          throw new Error("New access token not received")
         }
 
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', newAccessToken)
+        if (typeof window !== "undefined") {
+          localStorage.setItem("token", newAccessToken)
         }
 
         processQueue(null, newAccessToken)
@@ -155,7 +161,7 @@ export const API = async <T = Record<string, string>>({
         const retryData = await safeParseJson<ApiResponse & T>(retryRes)
 
         if (!retryRes.ok) {
-          throw new Error(retryData?.message || 'Request failed after refresh')
+          throw new Error(retryData?.message || "Request failed after refresh")
         }
 
         return (retryData || {}) as T
@@ -165,10 +171,17 @@ export const API = async <T = Record<string, string>>({
 
         processQueue(normalizedError, null)
 
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('token')
-          if (window.location.pathname !== '/') {
-            window.location.href = '/'
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token")
+          const publicPaths = ["/", "/appointment", "/doctors", "/signin", "/signup"]
+          const currentPath = window.location.pathname
+
+          const isPublicPage = publicPaths.some(
+            (path) => currentPath === path || currentPath.startsWith("/appointment")
+          )
+
+          if (!isPublicPage) {
+            window.location.href = "/signin"
           }
         }
 
