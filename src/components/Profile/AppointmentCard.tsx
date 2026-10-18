@@ -1,11 +1,9 @@
 'use client'
 
 import React from 'react'
-import Link from 'next/link'
 import {
   Calendar,
   Clock,
-  Video,
   Building,
   Eye,
   CheckCircle2,
@@ -65,14 +63,17 @@ export default function AppointmentCard({
   const isAdminOrStaff = ['ADMIN', 'STAFF'].includes(normalizedRole)
   const canManageStatus = ['ADMIN', 'DOCTOR', 'STAFF'].includes(normalizedRole)
   const canEditDetails = isAdminOrStaff || item.status === 'PENDING'
+  const serial = item.formattedSerialCode || item.serialCode || (item.serialNumber ? `SL-${item.serialNumber}` : null)
 
   return (
     <div className="group relative flex flex-col justify-between rounded-xl border border-gray-200 bg-white p-3.5 transition-all hover:border-blue-200 hover:shadow-xs sm:flex-row sm:items-center sm:p-4">
       <div className="space-y-1.5 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded bg-blue-50 px-2 py-0.5 font-mono text-[11px] font-bold text-blue-700 border border-blue-100">
-            {item.serialCode || `SL-${item.serialNumber}`}
-          </span>
+          {serial && (
+            <span className="rounded bg-blue-50 px-2 py-0.5 font-mono text-[11px] font-bold text-blue-700 border border-blue-100">
+              {serial}
+            </span>
+          )}
 
           <h6 className="truncate text-xs font-bold text-gray-900 sm:text-sm">
             {item.doctor?.user?.fullname ? `Dr. ${item.doctor.user.fullname}` : 'Doctor Assigned'}
@@ -94,31 +95,13 @@ export default function AppointmentCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-0.5">
-          <span
-            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-              item.type === 'ONLINE' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'
-            }`}
-          >
-            {item.type === 'ONLINE' ? (
-              <>
-                <Video className="h-3 w-3 shrink-0" /> Online
-              </>
-            ) : (
-              <>
-                <Building className="h-3 w-3 shrink-0" /> Offline
-              </>
-            )}
+          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+            <Building className="h-3 w-3 shrink-0" /> In-Clinic (Offline)
           </span>
 
-          {item.type === 'ONLINE' && item.meetingLink && (
-            <Link
-              href={item.meetingLink}
-              target="_blank"
-              className="text-[10px] font-bold text-blue-600 hover:underline"
-            >
-              Join Consultation Room
-            </Link>
-          )}
+          <span className="text-[11px] font-semibold text-gray-700">
+            Payment: <strong className={item.paymentStatus === 'PAID' ? 'text-emerald-600' : 'text-amber-600'}>{item.paymentStatus || 'UNPAID'}</strong> (৳{item.paidAmount ?? 0})
+          </span>
 
           {item.prescription && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
@@ -208,6 +191,6 @@ export default function AppointmentCard({
           </button>
         </div>
       </div>
-    </div>
+    </div> 
   )
 }
